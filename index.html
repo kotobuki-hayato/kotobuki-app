@@ -1,4 +1,1857 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>既存患者さん</title>
-<style>body{margin:0;font-family:system-ui,sans-serif;background:#faf9f6;color:#222;display:grid;place-items:center;min-height:100vh}@media(prefers-color-scheme:dark){body{background:#1c1b19;color:#eee}}</style></head>
-<body><p>準備中です</p></body></html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>既存患者さん</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f4f5; --surface:#ffffff; --sunken:#e9edf0; --ink:#1b2530; --sub:#5a6775; --line:#dce2e7;
+  --ai:#24507a; --ai-weak:#e2ebf4;
+  --shu:#bf3f2b; --shu-weak:#fbe8e3;
+  --yamabuki:#a86a10; --yamabuki-weak:#faefd8;
+  --tokiwa:#2b7556; --tokiwa-weak:#e1f1e9;
+  --fuji:#6a4a8c; --fuji-weak:#eee7f5;
+  --label-w:176px; --cell:16px; --row:32px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f151b; --surface:#171f28; --sunken:#1f2933; --ink:#e7ecf0; --sub:#9aa7b4; --line:#2b3642;
+    --ai:#86b6e0; --ai-weak:#1c3046;
+    --shu:#f08f7d; --shu-weak:#3b201b;
+    --yamabuki:#e3b45e; --yamabuki-weak:#3a2e15;
+    --tokiwa:#70c5a0; --tokiwa-weak:#173428;
+    --fuji:#bca0da; --fuji-weak:#2d233a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f151b; --surface:#171f28; --sunken:#1f2933; --ink:#e7ecf0; --sub:#9aa7b4; --line:#2b3642;
+  --ai:#86b6e0; --ai-weak:#1c3046;
+  --shu:#f08f7d; --shu-weak:#3b201b;
+  --yamabuki:#e3b45e; --yamabuki-weak:#3a2e15;
+  --tokiwa:#70c5a0; --tokiwa-weak:#173428;
+  --fuji:#bca0da; --fuji-weak:#2d233a;
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+  font-size:15px;line-height:1.6;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+button,select,input,textarea{font:inherit;color:inherit}
+textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;line-height:1.8;resize:vertical}
+:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 56px}
+
+/* 上部 */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 24px;padding:26px 0 14px}
+.top h1{margin:0;font-size:26px;font-weight:700;letter-spacing:.04em;line-height:1.2}
+.top .where{color:var(--sub);font-size:13px}
+.top .where b{color:var(--ink);font-weight:500}
+.top .pick{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+select,input[type=date],input[type=number]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:38px}
+input[type=number]{width:4.6em;text-align:right;padding:5px 8px;min-height:34px}
+
+.tabs{display:flex;margin-top:2px;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 16px 9px;font-weight:500;color:var(--sub);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ai);font-weight:700}
+
+/* 絞り込み */
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:16px 0 12px}
+.seg{display:inline-flex;background:var(--sunken);border-radius:9px;padding:3px}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:7px;cursor:pointer;color:var(--sub);font-size:13px}
+.seg button[aria-pressed=true]{background:var(--surface);color:var(--ink);font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 10px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.chip b{font-weight:700;font-size:15px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--sub)}
+.s-ended .dot,.dot.s-ended{background:var(--fuji)} .s-cancelled .dot,.dot.s-cancelled{background:var(--shu)}
+.s-nobook .dot,.dot.s-nobook{background:var(--shu)} .s-late .dot,.dot.s-late{background:var(--yamabuki)}
+.s-ok .dot,.dot.s-ok{background:var(--tokiwa)}
+.note{color:var(--sub);font-size:13px;margin:0 0 12px;max-width:76ch}
+
+/* 担当者の切り替え */
+.staffbar{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 16px}
+.staffbar button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:8px 16px;cursor:pointer;text-align:left;min-width:112px}
+.staffbar button span{display:block;font-weight:700;font-size:15px;white-space:nowrap}
+.staffbar button small{display:block;font-size:12px;color:var(--sub);white-space:nowrap}
+.staffbar button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.staffbar button[aria-pressed=true] small{color:var(--bg);opacity:.75}
+.staffbar.area{padding-bottom:10px}
+.staffbar.area button{border-radius:10px;border-left:4px solid var(--ai)}
+.staffbar.area button[aria-pressed=true]{border-left-color:var(--ink)}
+.storebar{padding:0 0 14px}
+.storebar .chip small{color:var(--sub);font-size:11px}
+.storebar .chip{min-height:34px}
+.guide{margin:16px 0 14px;font-size:14px;max-width:70ch}
+.card.sum{margin-bottom:20px;padding-bottom:12px}
+.card.sum td,.card.sum th{white-space:nowrap}
+.lk{background:none;border:0;padding:0;font-weight:700;color:var(--ai);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.n{display:inline-block;min-width:2.1em;text-align:center;border-radius:6px;padding:0 6px;font-weight:700}
+.n.s-ended{background:var(--fuji-weak);color:var(--fuji)} .n.s-cancelled,.n.s-nobook{background:var(--shu-weak);color:var(--shu)}
+.n.s-late{background:var(--yamabuki-weak);color:var(--yamabuki)} .n.s-ok{background:var(--tokiwa-weak);color:var(--tokiwa)} .n.s-away{background:var(--sunken);color:var(--sub)}
+details.group{margin:0 0 18px}
+details.group summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;padding:10px 4px}
+details.group summary::-webkit-details-marker{display:none}
+details.group summary .gt{font-size:17px;font-weight:700}
+details.group summary b{font-size:17px}
+details.group summary b::after{content:"　開く";font-size:12px;font-weight:500;color:var(--ai)}
+details.group[open] summary b::after{content:"　閉じる"}
+details.group summary small{grid-column:2/-1;color:var(--sub);font-size:13px}
+details.group.s-other .dot{background:var(--sub)}
+details.critbox{margin:0 0 18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 18px}
+details.critbox summary{cursor:pointer;padding:12px 0;font-weight:700;color:var(--ai)}
+details.critbox[open]{padding-bottom:16px}
+table.crit td:first-child{white-space:nowrap;width:1%} table.crit th{padding-top:12px;color:var(--ink);font-weight:700;font-size:13px}
+table.crit tr:first-child th{padding-top:0}
+.minbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 4px 10px;font-size:13px;color:var(--sub)}
+.minbar .seg{flex-wrap:wrap} .minbar .seg button{min-height:34px}
+details.group summary b .of{font-style:normal;font-weight:500;font-size:13px;color:var(--sub)}
+.ct{display:inline-block;margin-left:6px;border-radius:6px;padding:0 7px;font-size:11px;font-weight:700;background:var(--ai-weak);color:var(--ai);white-space:nowrap}
+.ct.back{background:var(--tokiwa-weak);color:var(--tokiwa)}
+.ctbtns{display:flex;gap:8px;flex-wrap:wrap} .ctbtns .btn{min-height:42px;padding:8px 16px}
+table.ctlog{margin-top:8px}
+h3.sub{margin:14px 4px 8px;font-size:15px} h3.sub b{margin-left:6px} h3.sub small{display:block;font-weight:400;font-size:12px;color:var(--sub)}
+
+.warn{margin:0 0 14px;padding:10px 14px;border-radius:10px;background:var(--yamabuki-weak);color:var(--yamabuki);font-size:13px;font-weight:500}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:50;max-width:calc(100vw - 24px);box-shadow:0 6px 24px rgba(10,20,30,.3)}
+.seg.pace{flex-wrap:wrap} .seg.pace button{padding:8px 14px;font-size:14px;min-height:40px}
+.seg.pace button[aria-pressed=true]{background:var(--ai);color:var(--surface)}
+button:disabled,input:disabled{opacity:.55;cursor:not-allowed}
+
+/* 一覧 */
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lrow{display:grid;grid-template-columns:minmax(150px,1.3fr) 110px 120px 110px minmax(200px,2fr);gap:4px 14px;align-items:center;
+  padding:10px 16px;border:0;border-top:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer}
+.lrow:first-child{border-top:0}
+.lrow.head{cursor:default;color:var(--sub);font-size:12px;padding:8px 16px;background:var(--sunken)}
+.lrow[data-id]:hover{background:var(--sunken)}
+.lrow.alert{background:var(--shu-weak)} .lrow.alert:hover{background:color-mix(in srgb,var(--shu-weak) 85%,var(--shu))}
+.alertsw{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--shu-weak);box-shadow:inset 0 0 0 1px var(--shu);vertical-align:-2px;margin-right:6px}
+.lrow.hasact{grid-template-columns:minmax(150px,1.3fr) 104px 104px 96px minmax(170px,2fr) 156px}
+.acts.in-who{display:none} .acts.at-end{justify-content:flex-end} .lrow.head .acth{text-align:right}
+.nmbox{min-width:0;display:block;flex:0 1 auto}
+.lrow.hasact .nmbox .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acts{display:flex;gap:6px;flex:none;margin-left:4px}
+.lrow.head .hint{font-style:normal;margin-left:6px}
+.tick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;min-height:36px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.tick i{width:16px;height:16px;border:2px solid var(--sub);border-radius:4px;display:inline-block;position:relative;flex:none}
+.tick[aria-pressed=true]{border-color:var(--tokiwa);background:var(--tokiwa-weak);color:var(--tokiwa)}
+.tick[aria-pressed=true] i{background:var(--tokiwa);border-color:var(--tokiwa)}
+.tick[aria-pressed=true] i::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid var(--surface);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.toast .lk{color:var(--bg);margin-left:8px}
+.who{display:flex;align-items:center;gap:9px;min-width:0}
+.who .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small,.lrow small{color:var(--sub);font-size:12px;display:block;line-height:1.35}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700;background:var(--ai-weak);color:var(--ai);white-space:nowrap}
+.tag.soon{background:var(--yamabuki-weak);color:var(--yamabuki)}
+.st{font-size:13px}
+.st b{display:inline-block;border-radius:6px;padding:1px 8px;font-size:12px;margin-right:6px}
+.s-ended .st b{background:var(--fuji-weak);color:var(--fuji)} .s-cancelled .st b,.s-nobook .st b{background:var(--shu-weak);color:var(--shu)}
+.s-late .st b{background:var(--yamabuki-weak);color:var(--yamabuki)} .s-ok .st b{background:var(--tokiwa-weak);color:var(--tokiwa)}
+.empty{padding:36px 16px;text-align:center;color:var(--sub)}
+
+/* 来院カレンダー（帯グラフ） */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--sub);margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.strip{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:72vh;position:relative}
+.strip-in{position:relative;width:max-content;min-width:100%}
+.srow{display:flex;height:var(--row);border-top:1px solid var(--line)}
+.srow.hd{height:44px;position:sticky;top:0;z-index:4;background:var(--sunken);border-top:0}
+.slabel{position:sticky;left:0;z-index:3;width:var(--label-w);flex:none;background:var(--surface);border:0;border-right:1px solid var(--line);
+  display:flex;align-items:center;gap:8px;padding:0 10px;text-align:left;cursor:pointer;min-width:0}
+.srow.hd .slabel{background:var(--sunken);cursor:default;font-size:12px;color:var(--sub);z-index:5}
+.slabel .nm{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.slabel .tk{font-size:11px;color:var(--sub);white-space:nowrap}
+.track{position:relative;flex:none}
+.srow:not(.hd) .track{background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(var(--cell)*7) 100%}
+.mlab{position:absolute;top:4px;font-size:12px;font-weight:700;white-space:nowrap}
+.dlab{position:absolute;bottom:4px;font-size:10px;color:var(--sub);transform:translateX(-50%);white-space:nowrap}
+.vline{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--sub);opacity:.35;z-index:1;pointer-events:none}
+.vline.today{border-left:2px solid var(--ink);opacity:.8}
+.todaylab{position:absolute;top:4px;font-size:10px;background:var(--ink);color:var(--bg);padding:0 5px;border-radius:4px;transform:translateX(-50%);z-index:2;white-space:nowrap}
+.mk{position:absolute;top:50%;transform:translate(-50%,-50%)}
+.mk.v{width:10px;height:10px;border-radius:50%;background:var(--ai);z-index:2}
+.mk.v.buy{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ai)}
+.mk.v.end{background:var(--fuji)}
+.mk.b{width:11px;height:11px;border-radius:50%;border:2px solid var(--ai);background:var(--surface);z-index:2}
+.mk.b.unv{border-style:dashed}
+.mk.x{color:var(--shu);font-size:13px;font-weight:700;line-height:1;z-index:2}
+.band{position:absolute;top:50%;height:16px;transform:translateY(-50%);border-radius:8px;background:var(--ai-weak)}
+.band.over{background:var(--shu-weak);box-shadow:inset 0 0 0 1px var(--shu)}
+.link{position:absolute;top:50%;height:0;border-top:1px solid var(--ai);opacity:.45}
+.link.dash{border-top-style:dashed}
+
+/* 更新見込み */
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.card h2{margin:0 0 4px;font-size:17px}
+.card p{margin:0 0 12px;color:var(--sub);font-size:13px}
+.bars{display:grid;gap:4px;margin-top:8px}
+.brow{display:grid;grid-template-columns:96px 1fr 44px;white-space:nowrap;gap:10px;align-items:center;background:none;border:0;padding:4px 6px;border-radius:8px;cursor:pointer;text-align:left}
+.brow:hover,.brow[aria-pressed=true]{background:var(--sunken)}
+.brow i{display:block;height:18px;border-radius:4px;background:var(--ai);min-width:3px}
+.brow span:last-child{text-align:right;font-weight:700}
+.split{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:10px 0 8px;background:var(--sunken)}
+.split i{display:block} .split .a{background:var(--tokiwa)} .split .b{background:var(--fuji)}
+.kv{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:var(--sub);margin-bottom:10px}
+.kv b{font-size:22px;color:var(--ink);margin-right:3px}
+.mini{display:grid;gap:0;margin-top:6px}
+.mini button{display:flex;justify-content:space-between;gap:10px;background:none;border:0;border-top:1px solid var(--line);padding:8px 2px;cursor:pointer;text-align:left;font-size:13px}
+.mini button:hover{background:var(--sunken)}
+.mini small{color:var(--sub)}
+
+/* 設定 */
+.rule{line-height:2.5}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--sub);margin:10px 0}
+.drop.on{border-color:var(--ai);background:var(--ai-weak)}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;min-height:38px}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.facts{margin:10px 0 0;padding:0;list-style:none;font-size:13px;color:var(--sub)}
+.facts li{padding:5px 0;border-top:1px solid var(--line)} .facts b{color:var(--ink)}
+ul.plain{margin:0;padding-left:1.2em;font-size:13px;color:var(--sub)} ul.plain li{margin:5px 0}
+#loadmsg{font-size:13px;margin:8px 0 0}
+.noedit{border:1px solid var(--yamabuki);background:var(--yamabuki-weak);color:var(--ink);border-radius:12px;padding:16px 18px;margin:0 0 10px;font-size:14px;line-height:1.8} .noedit b{display:block;color:var(--yamabuki);margin-bottom:4px}
+.drop.big{padding:34px 18px;margin:0 0 10px} .drop.big span{display:inline-block;margin-top:10px;font-size:13px}
+.steps{margin:0;padding-left:1.5em;font-size:15px} .steps>li{margin:0 0 12px;padding-left:4px} .steps>li::marker{font-weight:700;color:var(--ai)}
+.steps small,.first{display:block;color:var(--sub);font-size:12px;line-height:1.6;margin-top:3px}
+.ticks{list-style:none;margin:8px 0 6px;padding:10px 14px;background:var(--sunken);border-radius:10px;display:grid;gap:6px;font-weight:700}
+.ticks li::before{content:"✓";display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;margin-right:10px;border-radius:5px;background:var(--ai);color:var(--surface);font-size:13px}
+.period{display:inline-block;background:var(--ai-weak);color:var(--ai);border-radius:6px;padding:1px 8px;white-space:nowrap}
+.first{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:13px} .first b{color:var(--ink)}
+.grid2.csv{grid-template-columns:1fr 1fr}
+
+/* 患者さんの詳細 */
+dialog{border:0;border-radius:16px;padding:0;background:var(--surface);color:var(--ink);width:min(760px,calc(100vw - 24px));max-height:min(88vh,900px);box-shadow:0 18px 60px rgba(10,20,30,.35)}
+dialog::backdrop{background:rgba(10,18,26,.5)}
+.dh{position:sticky;top:0;background:var(--surface);padding:18px 22px 12px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;z-index:2}
+.dh h2{margin:0;font-size:20px;line-height:1.3} .dh small{color:var(--sub);font-size:13px;display:block}
+.dh .x{margin-left:auto;background:var(--sunken);border:0;border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:18px;flex:none}
+.db{padding:16px 22px 24px}
+.db h3{font-size:14px;margin:20px 0 8px}
+.say{border-left:4px solid var(--sub);padding:8px 12px;background:var(--sunken);border-radius:0 8px 8px 0;font-size:14px}
+.say.s-ended{border-color:var(--fuji)} .say.s-cancelled,.say.s-nobook{border-color:var(--shu)} .say.s-late{border-color:var(--yamabuki)} .say.s-ok{border-color:var(--tokiwa)}
+.cals{display:flex;gap:18px;flex-wrap:wrap}
+.cal{width:224px} .cal h4{margin:0 0 4px;font-size:13px}
+.cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:12px;text-align:center}
+.cal .w{color:var(--sub);font-size:10px}
+.cal .c{height:28px;line-height:28px;border-radius:14px;position:relative}
+.cal .c.win{background:var(--ai-weak);border-radius:4px} .cal .c.win.over{background:var(--shu-weak)}
+.cal .c.v{background:var(--ai);color:var(--surface);font-weight:700} .cal .c.v.end{background:var(--fuji)}
+.cal .c.bk{box-shadow:inset 0 0 0 2px var(--ai);font-weight:700;background:var(--surface)}
+.cal .c.cx{color:var(--shu);text-decoration:line-through;font-weight:700}
+.cal .c.td{outline:2px solid var(--ink);outline-offset:-2px;border-radius:4px}
+.cal-lg{margin:12px 0 0}
+.sw{display:inline-block;width:18px;height:18px;border-radius:9px;flex:none}
+.sw.v{background:var(--ai)} .sw.bk{box-shadow:inset 0 0 0 2px var(--ai)}
+.sw.win{background:var(--ai-weak);border-radius:4px;box-shadow:inset 0 0 0 1px var(--line)} .sw.win.over{background:var(--shu-weak);box-shadow:inset 0 0 0 1px var(--shu)}
+.sw.td{border-radius:4px;box-shadow:inset 0 0 0 2px var(--ink)}
+.cal-lg .cx{color:var(--shu);text-decoration:line-through;font-weight:700}
+table{border-collapse:collapse;width:100%;font-size:13px} th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--sub);font-weight:500;font-size:12px;border-top:0} td.r,th.r{text-align:right;white-space:nowrap}
+tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
+.cols2{display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
+
+@media (max-width:820px){
+  :root{--label-w:118px;--cell:14px}
+  .wrap{padding:0 12px 48px} .top{padding-top:18px} .top h1{font-size:22px} .top .pick{margin-left:0;width:100%}
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+  .lrow{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;padding:11px 12px}
+  .lrow.head{display:none}
+  .lrow .c-last,.lrow .c-next{display:none}
+  .lrow .st{grid-column:1/-1}
+  .lrow.hasact{grid-template-columns:auto minmax(0,1fr);align-items:start}
+  .lrow.hasact .who{grid-column:1/-1}
+  .lrow.hasact .st{grid-column:auto;padding-top:1px}
+  .tick{padding:4px 8px;min-height:34px;font-size:12px;gap:5px} .tick i{width:15px;height:15px}
+  .acts{gap:4px;margin-left:auto}
+  .acts.in-who{display:flex} .acts.at-end{display:none}
+  .lrow.hasact .nmbox{flex:1 1 auto}
+  .grid2,.cols2,.grid2.csv{grid-template-columns:1fr}
+  .slabel .tk{display:none}
+  dialog{width:100vw;max-width:100vw;max-height:92vh;margin:auto 0 0;border-radius:16px 16px 0 0}
+  .cal{width:calc(50% - 9px);min-width:150px}
+}
+@media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
+.top .me{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px}
+.top .me span{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3} .top .me small{color:var(--sub)}
+.btn.sm{min-height:32px;padding:4px 12px;font-size:13px}
+.gate{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.gatecard{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+.gatecard h1{margin:0;font-size:24px;letter-spacing:.04em} .gsub{margin:2px 0 20px;color:var(--sub);font-size:13px}
+.gatecard label{display:block;font-size:13px;color:var(--sub);margin:0 0 12px}
+.gatecard input,.memform input[type=text],.memform input[type=email],.memform select{display:block;width:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-height:42px;font-size:16px;color:var(--ink)}
+.btn.wide{width:100%;min-height:44px;font-size:15px;margin-top:4px}
+.galt{margin:14px 0 0;text-align:center;font-size:13px} .galt a{color:var(--ai)}
+.gnote{margin:16px 0 0;font-size:12px;color:var(--sub);line-height:1.7}
+.gmsg{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:var(--yamabuki-weak);color:var(--ink);font-size:13px;line-height:1.7}
+.memform label{display:block;font-size:13px;color:var(--sub);margin:0 0 12px}
+.memform fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:4px 0 0} .memform legend{font-size:13px;color:var(--sub);padding:0 4px}
+.storepick{display:flex;flex-wrap:wrap;gap:6px}
+.storepick .ck{display:inline-flex;align-items:center;gap:6px;margin:0;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink);font-size:14px;cursor:pointer}
+.storepick .ck small{color:var(--sub);font-size:11px}
+.areapick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.hint{font-size:12px;color:var(--sub);margin:8px 0 0}
+.memtbl{width:100%;border-collapse:collapse;font-size:14px} .memtbl td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top} .memtbl small{color:var(--sub)}
+.memtbl .r{text-align:right;white-space:nowrap}
+.role{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--sunken);white-space:nowrap} .role.r-admin{background:var(--ai-weak);color:var(--ai)} .role.r-am{background:var(--tokiwa-weak);color:var(--tokiwa)}
+.lk.danger{color:var(--shu)} .memtbl .nw{white-space:nowrap}
+details.mig{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;font-size:14px} details.mig summary{cursor:pointer;font-weight:700}
+@media (max-width:700px){ .top .me{margin-left:0;width:100%;justify-content:space-between} .top .me span{align-items:flex-start} .memtbl td{display:block;border-top:0;padding:2px 0} .memtbl tr{display:block;border-top:1px solid var(--line);padding:8px 0} .memtbl .r{text-align:left} }
+</style>
+</head>
+<body>
+<div id="gate" class="gate"></div>
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div>
+      <h1>既存患者さん</h1>
+      <div class="where"><b id="storeName"></b>　<span id="asOfLabel"></span></div>
+    </div>
+    <div class="me" id="meBox" hidden></div>
+  </header>
+  <p class="warn" id="warn" hidden></p>
+  <div class="staffbar area" id="areaBar" role="group" aria-label="エリアで切り替え" hidden></div>
+  <div class="chips storebar" id="storeBar" role="group" aria-label="院で切り替え" hidden></div>
+  <div class="staffbar" id="staffBar" role="group" aria-label="担当者で切り替え" hidden></div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="follow">患者さん一覧</button>
+    <button role="tab" data-tab="cal">来院カレンダー</button>
+    <button role="tab" data-tab="renew">更新見込み</button>
+    <button role="tab" data-tab="csv" id="tabCsv">CSVを入れる</button>
+    <button role="tab" data-tab="mem" id="tabMem" hidden>メンバー</button>
+    <button role="tab" data-tab="set">設定</button>
+  </nav>
+  <main id="view"></main>
+</div>
+<dialog id="dlg" aria-labelledby="dlgTitle"></dialog>
+<div class="toast" id="note" role="status" hidden></div>
+
+<script>
+/* ===== 集計ロジック（画面とは独立） ===== */
+const DAY_MS = 86400000;
+
+function toDay(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+  if (!m) return null;
+  return Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / DAY_MS);
+}
+function dayToDate(n) { return new Date(n * DAY_MS); }
+function dayISO(n) { return dayToDate(n).toISOString().slice(0, 10); }
+
+/* RFC4180 準拠の最小CSVパーサ。1行目を見出しとして、行ごとのオブジェクトを返す */
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  if (!rows.length) return { cols: [], rows: [] };
+  const cols = rows[0].map(s => s.trim());
+  return { cols, rows: rows.slice(1) };
+}
+
+/* 見出しからファイルの種類を判定する（ファイル名には頼らない） */
+function detectType(cols) {
+  const has = c => cols.includes(c);
+  if (has('予約ID') && has('来店日時') && has('削除済み')) return '予約';
+  if (has('明細ID') && has('品目名')) return '精算アイテム';
+  if (has('会計ID') && has('予約ID')) return '精算';
+  if (has('顧客ID') && has('氏名')) return '顧客';
+  if (has('スタッフID') && has('氏名')) return 'スタッフ';
+  return null;
+}
+
+function emptyData() {
+  return { res: new Map(), pay: new Map(), items: new Map(), cust: new Map() };
+}
+
+/* 表（cols, rows）をデータに取り込む。同じIDは上書きするので、期間を足して読み込める */
+function ingest(data, type, table, fallback) {
+  const idx = {}; table.cols.forEach((c, i) => { idx[c] = i; });
+  const g = (row, c) => (idx[c] === undefined ? '' : (row[idx[c]] || '').trim());
+  let n = 0;
+  for (const row of table.rows) {
+    if (type === '予約') {
+      const id = g(row, '予約ID'), day = toDay(g(row, '来店日時'));
+      if (!id || day === null) continue;
+      const nx = g(row, '次回予約までの日数');
+      data.res.set(id, {
+        id, day, cust: g(row, '顧客ID'),
+        store: g(row, '店舗名') || (fallback && fallback.store) || '',
+        staff: g(row, '担当スタッフ名').replace(/\s+/g, ' ') || '担当なし',
+        isNew: g(row, '新規顧客') === '1', deleted: g(row, '削除済み') === '1',
+        next: nx === '' ? null : Number(nx),
+      });
+    } else if (type === '精算') {
+      const id = g(row, '会計ID'); if (!id) continue;
+      data.pay.set(id, { id, res: g(row, '予約ID'), cust: g(row, '顧客ID') });
+    } else if (type === '精算アイテム') {
+      const id = g(row, '明細ID'); if (!id) continue;
+      data.items.set(id, { id, acct: g(row, '会計ID'), kind: g(row, '区分'), name: g(row, '品目名') });
+    } else if (type === '顧客') {
+      const id = g(row, '顧客ID'); if (!id) continue;
+      data.cust.set(id, { id, name: g(row, '氏名'), kana: g(row, '氏名カナ') }); // 氏名以外の個人情報は保持しない
+    } else continue;
+    n++;
+  }
+  return n;
+}
+
+const RE_USE = /回数券\s*(消化|更新)\s*([A-Za-z]*)\s*(\d+)/;
+const RE_BUY = /([A-Za-z]*)\s*(\d+)\s*回(?:数券|券|数)/; // 「S10回券」のほか、分割払いの「S10回数券」も購入の行として読む
+const RE_USE3 = /^\s*([A-Za-z]+)\s*(\d+)\s*回券/;        // 施術メニューとして登録された「R3回券」は、その回数券の1回分
+const RE_HALF = /0\.5\s*回分/;
+
+const DEFAULT_SETTINGS = { b1: 6, d1: 7, b2: 12, d2: 14, d3: 28, renewDays: 14, tol: 3, soon: 3, awayDays: 60, alertDays: 30, startDay: '' };
+const PACE_CHOICES = [7, 14, 21, 28];
+
+/* 初めての回数券の n回目（1始まり）の前に空ける目安日数 */
+function stagedInterval(n, st) {
+  if (n <= st.b1) return st.d1;
+  if (n <= st.b2) return st.d2;
+  return st.d3;
+}
+/* 更新した回数券の初期ペース：更新前の来院間隔（直近3回の中央値）を、週1・2週・3週・月1のいちばん近いものに丸める */
+function autoRenewDays(visitDays, start, st) {
+  const ds = visitDays.filter(d => d <= start), gaps = [];
+  for (let i = 1; i < ds.length; i++) gaps.push(ds[i] - ds[i - 1]);
+  const g = gaps.slice(-3).sort((a, b) => a - b);
+  if (!g.length) return { days: st.renewDays, from: null };
+  const med = g[Math.floor(g.length / 2)];
+  let best = PACE_CHOICES[0];
+  for (const c of PACE_CHOICES) if (Math.abs(c - med) < Math.abs(best - med)) best = c;
+  return { days: best, from: med };
+}
+
+function buildModel(data, settings, asOf, pace, asOfByStore) {
+  pace = pace || {}; asOfByStore = asOfByStore || {};
+  const st = Object.assign({}, DEFAULT_SETTINGS, settings || {});
+  const maxIvl = Math.max(st.d1, st.d2, st.d3, st.renewDays);
+  const startDay = st.startDay ? toDay(st.startDay) : null;
+
+  const acctByRes = new Map();
+  for (const p of data.pay.values()) {
+    if (!acctByRes.has(p.res)) acctByRes.set(p.res, []);
+    acctByRes.get(p.res).push(p.id);
+  }
+  const itemsByAcct = new Map();
+  for (const it of data.items.values()) {
+    if (!itemsByAcct.has(it.acct)) itemsByAcct.set(it.acct, []);
+    itemsByAcct.get(it.acct).push(it);
+  }
+
+  const byCust = new Map();
+  let dataStart = Infinity, dataEnd = -Infinity;
+  for (const r of data.res.values()) {
+    if (!r.cust) continue;
+    if (!byCust.has(r.cust)) byCust.set(r.cust, []);
+    byCust.get(r.cust).push(r);
+    if (r.day < dataStart) dataStart = r.day;
+    if (r.day > dataEnd) dataEnd = r.day;
+  }
+
+  const everyone = startDay === null || startDay < dataStart; // 開始日が空か、データより前の日付なら、購入日が分からない人も対象
+  const patients = [];
+  for (const [cid, rows] of byCust) {
+    const asOfP = asOfByStore[rows[0].store] !== undefined ? asOfByStore[rows[0].store] : asOf; // 院ごとに、CSVを読み込んだ日で判定する
+    const days = new Map();
+    for (const r of rows) {
+      if (!days.has(r.day)) days.set(r.day, { valid: [], deleted: [] });
+      days.get(r.day)[r.deleted ? 'deleted' : 'valid'].push(r);
+    }
+    const dayKeys = [...days.keys()].sort((a, b) => a - b);
+
+    const visits = [], cancels = [], futures = [];
+    for (const d of dayKeys) {
+      const { valid, deleted } = days.get(d);
+      if (!valid.length) { cancels.push(d); continue; }
+      if (d > asOfP) { futures.push(d); continue; }
+      const names = [], buys = [];
+      let use = null, uses = 0, useW = 0, renewItem = false, staff = valid[0].staff;
+      for (const r of valid) {
+        for (const a of acctByRes.get(r.id) || []) {
+          for (const it of itemsByAcct.get(a) || []) {
+            names.push(it.name);
+            const nm = it.name.normalize('NFKC'); // 全角の数字や英字（R３ など）を半角にそろえて読む
+            const mu = it.kind !== '2' && (nm.match(RE_USE) || (it.kind === '1' && nm.match(RE_USE3)));
+            if (mu) {
+              const isMenu = mu.length === 3; // RE_USE3 に当たった場合
+              uses++; useW += RE_HALF.test(nm) ? 0.5 : 1; // 「0.5回分」は半分だけ数える
+              use = isMenu ? { type: mu[1].toUpperCase() + mu[2], N: +mu[2] } : { type: mu[2].toUpperCase() + mu[3], N: +mu[3] };
+              if (!isMenu && mu[1] === '更新') renewItem = true;
+              staff = r.staff;
+            } else if (it.kind === '2') {
+              const mb = nm.match(RE_BUY);
+              if (mb) buys.push({ type: mb[1] ? mb[1].toUpperCase() + mb[2] : mb[2] + '回券', N: +mb[2], generic: !mb[1] });
+            }
+          }
+        }
+      }
+      visits.push({ day: d, staff, names, use, uses, useW, renewItem, buys, isNew: valid.some(r => r.isNew), store: valid[0].store });
+    }
+
+    /* 回数券の流れを組み立てる */
+    const tickets = [];
+    let cur = null;
+    const open = (type, N, start, known) => {
+      cur = { type, N, start, known, uses: [], usedSum: 0, pays: 1, ended: false, endDay: null, renewal: false, mixed: false, noBuyRecord: false };
+      tickets.push(cur); return cur;
+    };
+    const addUse = (v) => {
+      if (!cur || cur.ended) {
+        const afterEnd = !!(cur && cur.ended);
+        open(v.use.type, v.use.N, afterEnd ? v.day : null, afterEnd);
+        if (afterEnd) { cur.renewal = true; cur.noBuyRecord = true; }
+      }
+      if (cur.type !== v.use.type) {
+        if (cur.generic && cur.N === v.use.N) { cur.type = v.use.type; cur.generic = false; } // 券種の記号がない購入は、最初の消化メニューの名前に合わせる
+        else { cur.mixed = true; if (!cur.known) { cur.type = v.use.type; cur.N = v.use.N; } }
+      }
+      for (let i = 0; i < v.uses; i++) cur.uses.push(v.day);
+      cur.usedSum += v.useW;
+      if (cur.known && cur.usedSum >= cur.N) { cur.ended = true; cur.endDay = v.day; }
+    };
+    for (const v of visits) {
+      const hadTicket = tickets.length > 0;
+      if (v.renewItem) {              // 「回数券更新」＝いまの券の最後の1回として数える
+        addUse(v); cur.ended = true; cur.endDay = v.day; cur.renewPoint = true;
+      }
+      /* 回数券が残っているあいだに同じ券種の購入の行が出たら、分割払いの2回目以降とみなして、新しい券は始めない */
+      const instalment = v.buys.length && cur && cur.known && !cur.ended && !v.renewItem && v.buys.every(b => b.type === cur.type || b.type === v.buys[0].type && cur.type === b.type.replace(/\d+$/, '') + cur.N);
+      if (instalment) { cur.pays += 1; if (v.use) addUse(v); }
+      else if (v.buys.length) {
+        const N = v.buys.reduce((s, b) => s + b.N, 0);
+        if (cur && !cur.ended) { cur.ended = true; cur.endDay = v.day; cur.superseded = true; }
+        const prev = cur;
+        open(v.buys.length > 1 && v.buys.every(b => b.type === v.buys[0].type) && v.buys[0].type.match(/^[A-Z]/) ? v.buys[0].type.replace(/\d+$/, '') + N : v.buys[0].type, N, v.day, true);
+        cur.generic = !!v.buys[0].generic;
+        cur.renewal = v.renewItem || (hadTicket && !v.isNew);
+        cur.multi = v.buys.length > 1;
+        if (prev && prev.renewPoint) prev.renewed = true;
+        if (v.use && !v.renewItem) addUse(v); // 購入日の「消化」は新しい券の1回目
+      } else if (v.use && !v.renewItem) addUse(v);
+    }
+
+    const tk = tickets.length ? tickets[tickets.length - 1] : null;
+    const last = visits.length ? visits[visits.length - 1] : null;
+
+    /* 次回予約：まず実データ（未来の有効な予約）。なければ「次回予約までの日数」を、キャンセル済みを飛ばしながらたどる */
+    let booking = null, cancelledNext = null;
+    if (futures.length) booking = { day: futures[0], unverified: false };
+    else if (last) {
+      let c = last.day, src = days.get(c).valid, guard = 0;
+      while (guard++ < 20) {
+        const pos = src.map(r => r.next).filter(x => x !== null && x > 0);
+        if (!pos.length) break;
+        const c2 = c + Math.min(...pos);
+        const slot = days.get(c2);
+        if (slot && !slot.valid.length && slot.deleted.length) { cancelledNext = c2; c = c2; src = slot.deleted; continue; }
+        if (slot && slot.valid.length) break; // データ上は来院済みのはずなので、ここには来ない
+        booking = { day: c2, unverified: true }; // データ期間の外にある予約（キャンセルされたかは確認できない）
+        break;
+      }
+    }
+    if (booking) cancelledNext = null;
+    if (!booking && !cancelledNext && last) { const later = cancels.filter(d => d > last.day); if (later.length) cancelledNext = later[later.length - 1]; } // 前回の来院より後のキャンセルは、あとから読み込んだ分も拾う
+
+    const visitDays = visits.map(v => v.day);
+    const gaps = []; for (let i = 1; i < visitDays.length; i++) gaps.push(visitDays[i] - visitDays[i - 1]);
+
+    const p = {
+      id: cid, asOf: asOfP, name: (data.cust.get(cid) || {}).name || '', staff: last ? last.staff : (rows[0].staff || '担当なし'),
+      store: rows[0].store, visits, cancels, futures, tickets, tk, last, booking, cancelledNext, gaps,
+      isTicket: !!tk, isNew: visits.some(v => v.isNew),
+      used: null, seen: 0, remaining: null, target: null, limit: null, overdue: null, plan: [], endDay: null,
+      status: 'none', renewSoon: false,
+      tracked: tickets.some(t => t.known && (startDay === null || t.start >= startDay)) || (everyone && !!tk), pace: null, was: null,
+    };
+    /* この患者さんの来院ペース：個別に選んだもの → 更新の回数券は更新前の実績 → 初めての回数券は段階ペース */
+    const manual = Number(pace[cid]) > 0 ? Number(pace[cid]) : null;
+    const auto = !tk ? null : !tk.known ? Object.assign(autoRenewDays(visitDays, Infinity, st), { own: true }) // 購入日が分からない人は、これまでの来院間隔から
+      : tk.renewal ? autoRenewDays(visitDays, tk.start, st) : null;
+    const ivl = n => manual || (auto ? auto.days : stagedInterval(n, st));
+    if (tk) p.pace = { manual, auto, mode: manual ? 'manual' : (auto ? 'auto' : 'staged') };
+
+    if (last) {
+      const active = tk && !tk.ended;
+      if (tk) { p.seen = tk.uses.length; if (tk.known) { p.used = tk.usedSum; p.remaining = Math.max(0, tk.N - p.used); } }
+      const base = last.day;
+      if (active) {
+        const nextNo = p.used !== null ? Math.floor(p.used) + 1 : null;
+        p.target = base + ivl(nextNo || 1);
+        p.limit = p.target + st.tol;
+        p.overdue = asOfP - p.target;
+        p.status = booking ? (booking.day > p.limit ? 'late' : 'ok') : (cancelledNext ? 'cancelled' : 'nobook');
+        p.renewSoon = p.remaining !== null && p.remaining <= st.soon;
+        if (p.used !== null) {
+          tk.uses.forEach((d, i) => p.plan.push({ n: i + 1, day: d, kind: 'done' }));
+          let n = Math.floor(p.used) + 1, d = booking ? booking.day : Math.max(p.target, asOfP);
+          p.plan.push({ n, day: d, kind: booking ? 'booked' : 'target' });
+          while (n < tk.N) { n++; d += ivl(n); p.plan.push({ n, day: d, kind: 'plan' }); }
+          p.endDay = d;
+        }
+      } else if (tk) {
+        p.status = 'ended'; // 使い切り。新しい回数券の購入記録がない
+        p.overdue = asOfP - base;
+      } else {
+        p.status = booking ? 'ok' : (cancelledNext ? 'cancelled' : 'nobook');
+        p.overdue = asOfP - base;
+      }
+    } else {
+      p.status = booking ? 'ok' : 'none';
+    }
+    /* 予約がないまま長く来ていない人は、要フォローとは別に分ける */
+    if (last && !booking && asOfP - last.day >= st.awayDays && (p.status === 'ended' || p.status === 'cancelled' || p.status === 'nobook')) { p.was = p.status; p.status = 'away'; p.renewSoon = false; }
+    patients.push(p);
+  }
+
+  /* 更新のタイミングを迎えた回数券（データ内）と、その後の購入有無 */
+  const renewPoints = [];
+  for (const p of patients) for (const t of p.tickets) if (t.renewPoint) renewPoints.push({ p, t, renewed: !!t.renewed });
+
+  const stores = [...new Set(patients.map(p => p.store).filter(Boolean))];
+  const staffs = [...new Set(patients.map(p => p.staff))].sort();
+  return {
+    patients, renewPoints, stores, staffs, asOf, settings: st,
+    dataStart: isFinite(dataStart) ? dataStart : asOf, dataEnd: isFinite(dataEnd) ? dataEnd : asOf,
+    counts: { res: data.res.size, pay: data.pay.size, items: data.items.size, cust: data.cust.size },
+  };
+}
+
+/* ---- 保存用の変換 ---- */
+function tablesOf(data) {
+  const used = new Set(); for (const r of data.res.values()) used.add(r.cust); // 名前は、予約データに出てくる患者さんの分だけ保存する
+  return {
+    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
+      rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
+    '精算': { cols: ['会計ID', '予約ID'], rows: [...data.pay.values()].map(p => [p.id, p.res]) },
+    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名'], rows: [...data.items.values()].map(i => [i.id, i.acct, i.kind, i.name]) },
+    '顧客': { cols: ['顧客ID', '氏名'], rows: [...data.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
+  };
+}
+function csvLine(row) { return row.map(v => (/[",\n\r]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : v)).join(','); }
+function byteLen(s) { let n = 0; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); n += c < 0x80 ? 1 : c < 0x800 ? 2 : 3; } return n; }
+/* 1つの保存単位が大きくなりすぎないよう、見出し付きのCSV文字列を約180KBごとに分ける */
+function chunkCSV(table, maxBytes) {
+  maxBytes = maxBytes || 180000;
+  const head = csvLine(table.cols), out = [];
+  let buf = [head], size = byteLen(head);
+  for (const row of table.rows) {
+    const line = csvLine(row), b = byteLen(line) + 1;
+    if (size + b > maxBytes && buf.length > 1) { out.push(buf.join('\n')); buf = [head]; size = byteLen(head); }
+    buf.push(line); size += b;
+  }
+  if (buf.length > 1 || !out.length) out.push(buf.join('\n'));
+  return out;
+}
+const PART_KEY = { '予約': 'res', '精算': 'pay', '精算アイテム': 'item', '顧客': 'cust' };
+function datasetParts(data) {
+  const t = tablesOf(data), parts = [];
+  for (const type of Object.keys(PART_KEY)) chunkCSV(t[type]).forEach((csv, i) => parts.push({ id: PART_KEY[type] + '-' + i, type, csv }));
+  return parts;
+}
+
+if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, detectType, emptyData, ingest, buildModel, stagedInterval, autoRenewDays, tablesOf, chunkCSV, datasetParts, byteLen, DEFAULT_SETTINGS, PACE_CHOICES };
+
+</script>
+<script>
+/* ===== 画面 ===== */
+const fbReady = new Promise(r => { window.fbReady = r; });
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+const mdw = n => md(n) + '(' + WD[dayToDate(n).getUTCDay()] + ')';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pname = p => p.name || ('顧客ID ' + p.id);
+const $ = (s, el) => (el || document).querySelector(s);
+const todayDay = () => { const t = new Date(); return Math.round(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / DAY_MS); };
+const ymd = n => { const d = dayToDate(n); return `${d.getUTCFullYear()}/${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+
+let data = emptyData(), model;
+const state = { tab: 'follow', staff: '', store: '', area: '', areas: [], asOfByStore: {}, single: '', storeList: [], calMode: 'attn', open: {}, month: null, asOf: todayDay(),
+  settings: Object.assign({}, DEFAULT_SETTINGS), pace: {}, loadMsg: '', openId: null,
+  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
+
+/* ---- LINE・手紙の記録 ----
+   院ごとに1つの文書（contacts/s-xxxx）に、{ p: { 顧客ID: [{d:'YYYY-MM-DD', m:'line'|'letter'}] } } で残す */
+const METHOD = { line: 'LINE', letter: '手紙' };
+const storeKeyOf = st => { let h = 2166136261; for (const ch of String(st)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return 's-' + h.toString(16); };
+const contactsOf = p => (state.contacts[p.id] || []).filter(c => c && toDay(c.d) !== null);
+const lastContact = p => { const l = contactsOf(p); return l.length ? l.reduce((a, b) => (a.d >= b.d ? a : b)) : null; };
+const contactedSinceVisit = p => { const c = lastContact(p); return c && p.last && toDay(c.d) >= p.last.day ? c : null; };
+const cameAfter = (p, c) => p.visits.some(v => v.day > toDay(c.d));
+
+
+/* ---- この端末で覚えておくこと（前回見ていた院と担当者） ---- */
+let wantWho = null; try { wantWho = JSON.parse(localStorage.getItem('raiin-who') || 'null'); } catch (e) { /* 覚えていなくても全員表示から始まるだけ */ }
+function rememberWho() { try { localStorage.setItem('raiin-who', JSON.stringify({ store: state.store, staff: state.staff })); } catch (e) { /* 覚えられなくても画面は動く */ } }
+try { const o = JSON.parse(localStorage.getItem('raiin-onlynew') || '{}'); if (o && typeof o === 'object') for (const k of ['cancelled', 'nobook', 'away']) if (o[k] === true) state.onlyNew[k] = true; } catch (e) { /* 既定は「すべて」 */ }
+
+/* ---- 保存先（Firebase）----
+   院ごとに分けて保存する。院の文書のIDは「千葉院」のような短い院名。
+   stores/{院}          … その院のデータの目次（いつ時点か、どの部品があるか）
+   stores/{院}/parts/{} … 来院データ本体（CSVを分けたもの）
+   contacts/{院}        … LINE・手紙の記録
+   pace/{院}            … 患者さんごとの来院ペース
+   members/{メール}     … 使える人と役割（admin 管理者 / am エリマネ / staff スタッフ）と担当の院 */
+let FB = null;
+let queue = Promise.resolve();
+const enqueue = fn => (queue = queue.then(fn, fn)); // 書き込みは1つずつ順番に
+function denied(e) { return e && (e.code === 'permission-denied' || e.code === 'unauthenticated'); }
+let flashTimer;
+function flash(msg, undo) {
+  state.note = msg; state.undo = undo || null;
+  const n = $('#note'); if (n) { n.innerHTML = esc(msg || '') + (undo ? ' <button class="lk" data-act="undo">元に戻す</button>' : ''); n.hidden = !msg; }
+  clearTimeout(flashTimer); if (msg && !/保存中|移しています/.test(msg)) flashTimer = setTimeout(() => flash(''), 5000);
+}
+
+const ROLE = { admin: '管理者', am: 'エリマネ', staff: 'スタッフ' };
+const isAdmin = () => !!state.me && state.me.role === 'admin';
+const isAM = () => !!state.me && state.me.role === 'am';
+const sid = full => shortStore(full); // 保存に使う院のID
+const myStores = () => (state.me && Array.isArray(state.me.stores) ? state.me.stores : []);
+const canUploadStore = full => isAdmin() || (isAM() && myStores().includes(sid(full)));
+const canUpload = () => isAdmin() || isAM();
+const canManage = () => isAdmin(); // 設定とエリアを変えられるのは管理者だけ
+
+/* ---- この端末での一時保存 ----
+   2回目からは同じデータを取り直さずに済むよう、来院の記録をブラウザに置いておく。患者さんの氏名は置かず、毎回取りにいく。ログアウトすると消す。 */
+const IDB = 'kotobuki-cache';
+function idbOpen() {
+  return new Promise((res, rej) => {
+    try { const r = indexedDB.open(IDB, 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blocked')); }
+    catch (e) { rej(e); }
+  });
+}
+async function cacheGet(key) {
+  try { const d = await idbOpen(); return await new Promise(res => { const q = d.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); }
+  catch (e) { return null; }
+}
+async function cachePut(key, val) {
+  try { const d = await idbOpen(); await new Promise(res => { const t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put(val, key); t.oncomplete = res; t.onerror = res; t.onabort = res; }); }
+  catch (e) { /* 置けなくても画面は動く */ }
+}
+function cacheClear() { return new Promise(res => { try { const r = indexedDB.deleteDatabase(IDB); r.onsuccess = r.onerror = r.onblocked = () => res(); } catch (e) { res(); } }); }
+function cacheStore(s, version, docs) {
+  const parts = {}; let n = 0;
+  for (const id of Object.keys(docs)) if (docs[id].type !== '顧客') { parts[id] = docs[id]; n++; }
+  if (version && n) return cachePut('st:' + s, { version, parts });
+}
+function showProgress() {
+  const t = state.loadTotal, d = state.loadDone;
+  state.loadProg = t > 1 && d < t ? `${d}/${t}` : '';
+  const w = $('#warn'); if (w && state.dbState === 'loading') w.textContent = '読み込み中です…' + (state.loadProg ? ' ' + state.loadProg : '');
+}
+
+/* 院ごとのデータ */
+const storeData = {};   // 院ID → { data, version, name, asOf, savedAt }
+const loadingVer = {};  // 院ID → 読み込み中の版
+function mergeAll() {
+  const d = emptyData(), by = {};
+  let asOf = null, saved = null;
+  for (const s of Object.keys(storeData)) {
+    const x = storeData[s];
+    for (const k of ['res', 'pay', 'items', 'cust']) for (const [id, v] of x.data[k]) d[k].set(id, v);
+    if (x.name && x.asOf !== null) { by[x.name] = x.asOf; if (asOf === null || x.asOf > asOf) asOf = x.asOf; }
+    if (x.savedAt && (!saved || x.savedAt > saved)) saved = x.savedAt;
+  }
+  data = d; state.asOfByStore = by; if (asOf !== null) state.asOf = asOf; state.savedAt = saved;
+}
+async function loadStore(s, meta) {
+  if (!meta) { if (storeData[s]) { delete storeData[s]; mergeAll(); rebuild(); } return; }
+  const v = meta.version || 0;
+  if (storeData[s] && storeData[s].version === v) { storeData[s].asOf = toDay(meta.asOf); return; }
+  if (loadingVer[s] === v) return;
+  loadingVer[s] = v;
+  const ids = Array.isArray(meta.parts) ? meta.parts : [];
+  const cached = v ? await cacheGet('st:' + s) : null;
+  const docs = cached && cached.version === v && cached.parts ? Object.assign({}, cached.parts) : {};
+  const need = ids.filter(id => !docs[id]);
+  const got = await Promise.all(need.map(id => FB.get(`stores/${s}/parts/${id}`).then(x => [id, x])));
+  if (loadingVer[s] !== v) return; // 読み込み中に、さらに新しいデータが入った
+  let fresh = 0;
+  for (const [id, x] of got) if (x && x.type && typeof x.csv === 'string') { docs[id] = { type: x.type, csv: x.csv }; if (x.type !== '顧客') fresh++; }
+  const d = emptyData();
+  for (const id of ids) if (docs[id]) ingest(d, docs[id].type, parseCSV(docs[id].csv));
+  if (fresh) { const keep = {}; for (const id of ids) if (docs[id]) keep[id] = docs[id]; cacheStore(s, v, keep); }
+  storeData[s] = { data: d, version: v, name: meta.name || s, asOf: toDay(meta.asOf), savedAt: meta.savedAt || null, partIds: ids };
+  delete loadingVer[s];
+  mergeAll();
+}
+
+/* その院の分だけを、保存用の表にする */
+function storeTablesOf(src, full) {
+  const res = [...src.res.values()].filter(r => r.store === full), rid = new Set(res.map(r => r.id)), used = new Set(res.map(r => r.cust));
+  const pay = [...src.pay.values()].filter(p => rid.has(p.res)), aid = new Set(pay.map(p => p.id));
+  return {
+    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
+      rows: res.map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
+    '精算': { cols: ['会計ID', '予約ID'], rows: pay.map(p => [p.id, p.res]) },
+    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名'], rows: [...src.items.values()].filter(i => aid.has(i.acct)).map(i => [i.id, i.acct, i.kind, i.name]) },
+    '顧客': { cols: ['顧客ID', '氏名'], rows: [...src.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
+  };
+}
+async function saveStore(full, src, asOf, label) {
+  const s = sid(full), t = storeTablesOf(src, full), parts = [];
+  for (const type of Object.keys(PART_KEY)) chunkCSV(t[type], 600000).forEach((csv, i) => parts.push({ id: PART_KEY[type] + '-' + i, type, csv }));
+  const old = storeData[s] ? null : await FB.get('stores/' + s);
+  const oldIds = (storeData[s] && storeData[s].partIds) || (old && old.parts) || [];
+  let i = 0;
+  for (const p of parts) { flash(`${label || shortStore(full)}を保存中… ${++i}/${parts.length + 1}`); await FB.set(`stores/${s}/parts/${p.id}`, { type: p.type, csv: p.csv }); }
+  const version = Date.now(), savedAt = new Date().toISOString();
+  loadingVer[s] = version; // 自分で保存した分は、取り直さない
+  await FB.set('stores/' + s, { name: full, asOf: dayISO(asOf), version, parts: parts.map(p => p.id), savedAt,
+    counts: { res: t['予約'].rows.length, pay: t['精算'].rows.length, items: t['精算アイテム'].rows.length, cust: t['顧客'].rows.length } });
+  for (const id of oldIds) if (!parts.some(p => p.id === id)) await FB.del(`stores/${s}/parts/${id}`).catch(() => {});
+  const mine = {}; for (const p of parts) mine[p.id] = { type: p.type, csv: p.csv }; cacheStore(s, version, mine);
+  const d = emptyData(); for (const p of parts) ingest(d, p.type, parseCSV(p.csv));
+  storeData[s] = { data: d, version, name: full, asOf, savedAt, partIds: parts.map(p => p.id) };
+  if (loadingVer[s] === version) delete loadingVer[s];
+}
+function saveSettings() {
+  if (!FB || !canManage()) return;
+  const body = Object.assign({}, state.settings);
+  enqueue(() => FB.set('config/settings', body).then(() => flash('設定を保存しました。'), () => flash('設定を保存できませんでした。管理者のアカウントか確認してください。')));
+}
+function saveContacts(p, list, msg, undo) {
+  state.contacts[p.id] = list; rebuild();
+  const s = sid(p.store);
+  enqueue(() => FB.set('contacts/' + s, { p: { [p.id]: list } }, true)
+    .then(() => flash(msg || '記録しました。', undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
+}
+function addContact(id, m) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  const d = dayISO(todayDay()), list = contactsOf(p);
+  if (list.some(c => c.d === d && c.m === m)) { flash('今日の' + (METHOD[m] || m) + 'は、もう記録してあります。'); return; }
+  saveContacts(p, list.concat([{ d, m }]));
+}
+/* 一覧のチェック：今日の記録をつける／もう一度押すと取り消す。日を変えれば何度でも記録できる */
+function toggleToday(id, m) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  const d = dayISO(todayDay()), before = contactsOf(p), on = before.some(c => c.d === d && c.m === m);
+  const next = on ? before.filter(c => !(c.d === d && c.m === m)) : before.concat([{ d, m }]);
+  saveContacts(p, next, `${pname(p)}さん：${METHOD[m]}を${on ? '取り消しました' : '記録しました'}`, () => saveContacts(p, before, '元に戻しました。'));
+}
+function removeContact(id, d, m) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  saveContacts(p, contactsOf(p).filter(c => !(c.d === d && c.m === m)));
+}
+function savePace(id, days) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  if (days > 0) state.pace[id] = days; else delete state.pace[id];
+  rebuild();
+  enqueue(() => FB.set('pace/' + sid(p.store), { p: { [id]: days } }, true) // 0 は「おまかせ」に戻す印
+    .then(() => flash('来院ペースを保存しました。'), () => { flash('来院ペースを保存できませんでした。'); rebuild(); }));
+}
+
+/* 院ごとの LINE・手紙 と 来院ペース を1つにまとめる */
+const contactsBy = {}, paceBy = {};
+function mergeSide() {
+  const c = {}, p = {};
+  for (const s of Object.keys(contactsBy)) for (const k of Object.keys(contactsBy[s])) if (Array.isArray(contactsBy[s][k])) c[k] = (c[k] || []).concat(contactsBy[s][k]);
+  for (const s of Object.keys(paceBy)) Object.assign(p, paceBy[s]);
+  state.contacts = c; state.pace = p;
+}
+
+/* ---- ログインと読み込み ---- */
+let unsubs = [];
+const watched = new Set();
+function watchStore(s) {
+  if (watched.has(s)) return; watched.add(s);
+  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
+  unsubs.push(FB.watch('pace/' + s, (x, pending) => { if (pending) return; paceBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
+}
+function onMetas(list, first) {
+  const ids = list.map(x => x.id);
+  for (const s of Object.keys(storeData)) if (!ids.includes(s)) delete storeData[s];
+  const todo = list.filter(x => x.data && !(storeData[x.id] && storeData[x.id].version === (x.data.version || 0)));
+  if (first) { state.loadTotal = todo.length; state.loadDone = 0; showProgress(); }
+  for (const x of list) watchStore(x.id);
+  return Promise.all(todo.map(x => loadStore(x.id, x.data).then(() => { if (first) { state.loadDone++; showProgress(); } }))).then(() => { mergeAll(); rebuild(); });
+}
+async function startData() {
+  state.dbState = 'loading'; rebuild();
+  unsubs.push(FB.watch('config/settings', (x, pending) => { if (pending) return; state.settings = Object.assign({}, DEFAULT_SETTINGS, x || {}); rebuild(); }, () => {}));
+  unsubs.push(FB.watch('config/areas', (x, pending) => {
+    if (pending) return;
+    state.areasAll = normAreas(x ? x.list : []);
+    state.areas = isAdmin() ? state.areasAll : state.areasAll.map(a => ({ name: a.name, stores: a.stores.filter(st => myStores().some(m => keyOf(m) && shortStore(st).includes(keyOf(m)))) })).filter(a => a.stores.length);
+    if (wantArea !== null) { if (wantArea === NO_AREA || state.areas.some(a => a.name === wantArea)) state.area = wantArea; wantArea = null; }
+    if (!isAdmin() && state.areas.length === 1) state.area = state.areas[0].name; // 担当が1エリアだけなら、最初からそのエリア
+    rebuild();
+  }, () => {}));
+  let firstDone = null; const first = new Promise(r => { firstDone = r; });
+  if (isAdmin()) {
+    let isFirst = true;
+    unsubs.push(FB.watchList('stores', list => {
+      const f = isFirst; isFirst = false;
+      onMetas(list, f).then(() => { if (f) firstDone(); }, () => { if (f) firstDone(); });
+    }, () => { state.dbState = 'error'; firstDone(); }));
+  } else {
+    const ss = myStores(), got = {}; let n = 0;
+    if (!ss.length) firstDone();
+    for (const s of ss) {
+      let isFirst = true;
+      unsubs.push(FB.watch('stores/' + s, x => {
+        got[s] = x;
+        if (isFirst) { isFirst = false; if (++n === ss.length) onMetas(ss.filter(k => got[k]).map(k => ({ id: k, data: got[k] })), true).then(firstDone, firstDone); else return; }
+        else onMetas(ss.filter(k => got[k]).map(k => ({ id: k, data: got[k] })), false);
+      }, () => { if (isFirst) { isFirst = false; if (++n === ss.length) firstDone(); } }));
+    }
+  }
+  await first;
+  if (state.dbState === 'loading') state.dbState = 'ready';
+  if (wantWho) { state.store = wantWho.store || ''; state.staff = wantWho.staff || ''; wantWho = null; }
+  rebuild();
+}
+
+/* 入口の画面（ログイン／確認待ち／未登録） */
+function gate(kind, msg) {
+  state.gate = kind;
+  const g = $('#gate'), app = $('#app');
+  g.hidden = !kind; app.hidden = !!kind;
+  if (!kind) return;
+  const setup = location.hash === '#setup';
+  const box = inner => `<div class="gatecard"><h1>既存患者さん</h1><p class="gsub">整体KOTOBUKI　来院ペースと要フォローの確認</p>${inner}${msg ? `<p class="gmsg">${esc(msg)}</p>` : ''}</div>`;
+  if (kind === 'loading') g.innerHTML = box('<p>読み込み中です…</p>');
+  else if (kind === 'fail') g.innerHTML = box('<p>アプリを読み込めませんでした。通信状態を確認して、ページを開き直してください。</p>');
+  else if (kind === 'login') g.innerHTML = box(setup
+    ? `<form id="fSetup"><p>管理者のアカウントを作ります（最初の1回だけ）。</p>
+      <label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
+      <label>パスワード（8文字以上）<input type="password" name="pw" autocomplete="new-password" minlength="8" required></label>
+      <label>パスワード（もう一度）<input type="password" name="pw2" autocomplete="new-password" minlength="8" required></label>
+      <button class="btn wide">アカウントを作る</button></form>
+      <p class="galt"><a href="#" data-act="toLogin">ログインに戻る</a></p>`
+    : `<form id="fLogin">
+      <label>メールアドレス<input type="email" name="email" autocomplete="username" required></label>
+      <label>パスワード<input type="password" name="pw" autocomplete="current-password" required></label>
+      <button class="btn wide">ログイン</button></form>
+      <p class="galt"><button class="lk" data-act="forgot">パスワードを忘れた・まだ決めていない</button></p>
+      <p class="gnote">アカウントは、エリマネか管理者が登録します。登録されると「パスワードの再設定」のメールが届くので、そこでパスワードを決めてください。メールが見つからないときは、迷惑メールのフォルダも見てください。</p>`);
+  else if (kind === 'verify') g.innerHTML = box(`<p><b>${esc(FB.auth.currentUser.email)}</b> に確認のメールを送りました。メールのリンクを押してから、下のボタンを押してください。</p>
+      <p><button class="btn wide" data-act="verified">確認しました</button></p>
+      <p class="galt"><button class="lk" data-act="resend">確認メールをもう一度送る</button>　<button class="lk" data-act="logout">ログアウト</button></p>`);
+  else if (kind === 'nomember') g.innerHTML = box(`<p><b>${esc(FB.auth.currentUser.email)}</b> は、まだ使える人として登録されていません。エリマネか管理者に、このメールアドレスで登録してもらってください。</p>
+      <p class="galt"><button class="lk" data-act="logout">ログアウト</button></p>`);
+}
+const AUTH_MSG = {
+  'auth/invalid-credential': 'メールアドレスかパスワードが違います。', 'auth/wrong-password': 'メールアドレスかパスワードが違います。', 'auth/user-not-found': 'メールアドレスかパスワードが違います。',
+  'auth/invalid-email': 'メールアドレスの形が正しくありません。', 'auth/too-many-requests': '何度も失敗したため、しばらくログインできません。少し時間をおいてください。',
+  'auth/email-already-in-use': 'このメールアドレスは、もう登録されています。ログインしてください。', 'auth/weak-password': 'パスワードは8文字以上にしてください。',
+  'auth/network-request-failed': '通信できませんでした。電波の状態を確認してください。',
+};
+const authMsg = e => AUTH_MSG[e && e.code] || 'うまくいきませんでした。もう一度お試しください。';
+const backUrl = () => location.origin + location.pathname;
+
+async function onUser(user) {
+  for (const u of unsubs) { try { u(); } catch (e) { /* もう止まっている */ } }
+  unsubs = []; watched.clear();
+  if (!user) { state.me = null; gate('login'); return; }
+  gate('loading');
+  const email = String(user.email || '').toLowerCase();
+  let me = null;
+  try { me = await FB.get('members/' + email); } catch (e) { me = null; }
+  if (!me) { // 管理者の最初の1回：自分を管理者として登録する（ルールで決めたアドレスだけが成功する）
+    try { await FB.set('members/' + email, { name: '管理者', role: 'admin', stores: [], addedBy: email, addedAt: new Date().toISOString() }); me = await FB.get('members/' + email); } catch (e) { me = null; }
+  }
+  if (!me) { gate(user.emailVerified ? 'nomember' : 'verify'); return; }
+  state.me = Object.assign({ email }, me);
+  unsubs.push(FB.watch('members/' + email, x => { // 役割や担当の院が変わったら、読み込み直す
+    if (!x) { location.reload(); return; }
+    if (x.role !== state.me.role || JSON.stringify(x.stores || []) !== JSON.stringify(state.me.stores || [])) location.reload();
+    else { state.me = Object.assign({ email }, x); renderMe(); }
+  }, () => {}));
+  if (canUpload()) unsubs.push(FB.watchList('members', list => { state.members = list; if (state.tab === 'mem') render(); }, () => {}));
+  if (location.hash === '#setup') history.replaceState(null, '', location.pathname);
+  gate(null); renderMe();
+  if (state.tab === 'mem' && !canUpload()) state.tab = 'follow';
+  await startData();
+}
+function renderMe() {
+  const m = state.me, b = $('#meBox'); if (!b) return;
+  b.hidden = !m;
+  if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${ROLE[m.role] || ''}</small></span><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
+  const t = $('#tabMem'); if (t) t.hidden = !canUpload();
+}
+async function boot() {
+  gate('loading');
+  try { FB = await Promise.race([fbReady, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000))]); }
+  catch (e) { gate('fail'); return; }
+  FB.onAuth(u => { onUser(u).catch(() => { state.dbState = 'error'; rebuild(); }); });
+}
+window.addEventListener('hashchange', () => { if (state.gate === 'login') gate('login'); });
+async function logout() { await cacheClear(); try { localStorage.removeItem('raiin-who'); } catch (e) { /* なくてもよい */ } await FB.signOut(); location.replace(location.pathname); }
+document.addEventListener('submit', async e => {
+  const f = e.target; if (!f.id || !/^f(Login|Setup)$/.test(f.id)) return;
+  e.preventDefault();
+  const email = f.email.value.trim(), btn = f.querySelector('button'); btn.disabled = true;
+  try {
+    if (f.id === 'fLogin') await FB.signIn(email, f.pw.value);
+    else {
+      if (f.pw.value !== f.pw2.value) { gate('login', '2つのパスワードが同じではありません。'); return; }
+      await FB.signUp(email, f.pw.value, backUrl());
+    }
+  } catch (err) { gate('login', authMsg(err)); }
+});
+document.addEventListener('click', async e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'logout') { e.preventDefault(); logout(); }
+  else if (act === 'toLogin') { e.preventDefault(); history.replaceState(null, '', location.pathname); gate('login'); }
+  else if (act === 'forgot') {
+    const f = $('#fLogin'), email = f ? f.email.value.trim() : '';
+    if (!email) { gate('login', '上の欄にメールアドレスを入れてから、もう一度押してください。'); return; }
+    try { await FB.reset(email, backUrl()); gate('login', `${email} に、パスワードを決めるメールを送りました（登録されているアドレスの場合）。メールのリンクから新しいパスワードを決めて、ここに戻ってログインしてください。`); }
+    catch (err) { gate('login', authMsg(err)); }
+  }
+  else if (act === 'resend') { try { await FB.resendVerify(backUrl()); gate('verify', '確認のメールを送り直しました。'); } catch (err) { gate('verify', authMsg(err)); } }
+  else if (act === 'verified') { try { const u = await FB.refresh(); if (!u.emailVerified) { gate('verify', 'まだ確認が終わっていないようです。メールのリンクを押してから、もう一度押してください。'); return; } onUser(u); } catch (err) { gate('verify', authMsg(err)); } }
+});
+
+function rebuild() {
+  model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore);
+  renderChrome();
+  const ae = document.activeElement;
+  if (!((state.tab === 'set' || state.tab === 'csv') && ae && ae.closest && ae.closest('#view') && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))) render(); // 入力中の欄は作り直さない
+  if ($('#dlg').open && state.openId) openPatient(state.openId, true);
+}
+
+const LABEL = { ended: '更新せず終了', cancelled: 'キャンセルしたまま', nobook: '次回予約なし', late: '間隔が空きすぎ', ok: '順調', away: 'しばらく来ていない', none: '来院なし' };
+const SEVERITY = { cancelled: 0, nobook: 1, late: 2, ok: 3, ended: 4, away: 5, none: 6 };
+const done = p => !!(p.tk && p.tk.ended); // 回数券が終了している
+const ATTN = ['cancelled', 'nobook', 'late']; // 要フォローに数える状態
+const GROUPS = [
+  { k: 'cancelled', title: '予約をキャンセルしたままの患者さん', help: '次の予約をキャンセルしたあと、取り直していません。', open: true },
+  { k: 'nobook', title: '次回予約が入っていない患者さん', help: '回数券が残っているのに、次の予約がありません。最後の来院から日数が経っている順です。', open: true },
+  { k: 'late', title: '予約はあるが、間隔が空きすぎの患者さん', help: '次の予約が、目安のペースより先の日付になっています。', open: true },
+  { k: 'ok', title: '順調な患者さん', help: '目安のペースどおりに次の予約が入っています。', open: false },
+  { k: 'ended', title: '更新せずに終わった患者さん', help: '回数券が終了したあと、新しい回数券の購入記録がありません。要フォローの人数には入れていません。', open: false },
+  { k: 'away', title: 'しばらく来ていない患者さん', help: '最後の来院から{n}日以上たっていて、次の予約がありません。要フォローの人数には入れていません。回数券の残りで分けて、最近まで来ていた順に並べています。', open: false },
+];
+/* ---- エリアと院 ---- */
+const NO_AREA = 'エリア未設定';
+const shortStore = s => { const t = String(s || '').trim().split(/[\s\u3000]+/).pop() || ''; return t.replace(/^.*[-\uFF0D\u2010](?=.)/, '') || String(s || ''); }; // 「整体KOTOBUKI-寿- 千葉院」→「千葉院」
+const keyOf = s => shortStore(s).replace(/院$/, '');
+function normAreas(list) {
+  return (Array.isArray(list) ? list : []).filter(a => a && a.name && Array.isArray(a.stores))
+    .map(a => ({ name: String(a.name), stores: a.stores.map(x => String(x).trim()).filter(Boolean) }));
+}
+function parseAreas(text) {
+  const out = [];
+  for (const line of String(text).split(/\n/)) {
+    const m = line.match(/^\s*(.+?)\s*[：:]\s*(.*)$/); if (!m) continue;
+    const stores = m[2].split(/[・、,，\s\u3000]+/).map(x => x.trim()).filter(Boolean);
+    if (stores.length) out.push({ name: m[1], stores });
+  }
+  return out;
+}
+const areaMemo = new Map();
+function areaOf(store) {
+  if (areaMemo.has(store)) return areaMemo.get(store);
+  const k = shortStore(store); let hit = '';
+  for (const a of state.areas) if (a.stores.some(x => { const q = keyOf(x); return q && k.includes(q); })) { hit = a.name; break; }
+  areaMemo.set(store, hit); return hit;
+}
+const inArea = (store, name) => !name || (areaOf(store) || NO_AREA) === name;
+const storeAsOf = s => (state.asOfByStore[s] !== undefined ? state.asOfByStore[s] : state.asOf);
+const tanto = p => (state.single ? '' : shortStore(p.store) + '　') + '担当 ' + p.staff;
+let wantArea = null; try { wantArea = localStorage.getItem('raiin-area'); } catch (e) { /* 保存領域が使えない環境では毎回「全エリア」から始まる */ }
+function rememberArea() { try { localStorage.setItem('raiin-area', state.area); } catch (e) { /* 覚えられなくても画面は動く */ } }
+
+const visible = () => model.patients.filter(p => p.last && p.tracked && inArea(p.store, state.area) && (!state.store || p.store === state.store));
+const scoped = () => visible().filter(p => !state.staff || p.staff === state.staff);
+const BY_LAST = ['ended', 'cancelled', 'nobook']; // 予約がない人は、最後の来院が古い順
+const sorter = (a, b) => (SEVERITY[a.status] - SEVERITY[b.status]) || (a.status === 'away' ? b.last.day - a.last.day : 0) || (BY_LAST.includes(a.status) ? a.last.day - b.last.day : 0) || ((b.overdue || 0) - (a.overdue || 0)) || (a.last.day - b.last.day);
+
+function ticketText(p) {
+  const t = p.tk;
+  if (!t) return p.isNew ? '新規・回数券なし' : '回数券なし';
+  if (done(p)) return t.type + ' 終了';
+  return p.used !== null ? `${t.type} ${p.used}/${t.N}回` : `${t.type} 回数不明`;
+}
+function detail(p) {
+  const a = p.asOf, since = a - p.last.day, b = p.booking;
+  const bk = b ? `次回は ${mdw(b.day)}` : '';
+  switch (p.status) {
+    case 'ended': return `最後の来院から${since}日。${b ? bk : '次回予約なし'}`;
+    case 'away': return `最後の来院から${since}日。${done(p) ? '回数券は終了' : p.remaining !== null ? `回数券が${p.remaining}回残っています` : '回数券の残りは不明'}${p.was === 'cancelled' ? '。予約をキャンセルしたまま' : ''}`;
+    case 'cancelled': return `${md(p.cancelledNext)} の予約をキャンセル。最後の来院から${since}日`;
+    case 'nobook':
+      if (since === 0) return `${md(p.last.day)} に来院。次の予約がまだ入っていません`;
+      if (!p.tk || p.target === null) return `最後の来院から${since}日`;
+      if (p.target - p.last.day <= 0) return `最後の来院から${since}日`;
+      return `最後の来院から${since}日（目安は${p.target - p.last.day}日ごと）`;
+    case 'late': return p.target !== null ? `${bk}。目安日 ${md(p.target)} より${b.day - p.target}日先` : `${bk}。前回から${b.day - p.last.day}日空きます`;
+    case 'ok': return `${bk}。前回から${b.day - p.last.day}日`;
+    default: return '';
+  }
+}
+
+/* ---- 上部 ---- */
+function renderChrome() {
+  areaMemo.clear();
+  const all = model.patients.filter(p => p.last && p.tracked), dataStores = model.stores;
+  const hasAreas = state.areas.length > 0, attn = ps => ps.filter(p => ATTN.includes(p.status)).length;
+  const areaNames = state.areas.map(a => a.name);
+  if (hasAreas && dataStores.some(s => !areaOf(s))) areaNames.push(NO_AREA);
+  if (state.area && !areaNames.includes(state.area)) state.area = '';
+  const withData = name => dataStores.filter(s => inArea(s, name));
+
+  const ab = $('#areaBar'); ab.hidden = !hasAreas;
+  ab.innerHTML = hasAreas ? [''].concat(areaNames).map(n => {
+    const has = withData(n).length;
+    return `<button data-area="${esc(n)}" aria-pressed="${n === state.area}"><span>${n ? esc(n) : '全エリア'}</span><small>${has ? '要フォロー ' + attn(all.filter(p => inArea(p.store, n))) + '人' : 'データなし'}</small></button>`;
+  }).join('') : '';
+
+  /* いまの範囲に含まれる院（エリアを選んだときは、まだCSVがない院も並べる） */
+  let list = [];
+  if (state.area) {
+    const conf = (state.areas.find(a => a.name === state.area) || { stores: [] }).stores, wd = withData(state.area), seen = new Set();
+    for (const c of conf) { const full = wd.find(s => shortStore(s).includes(keyOf(c))); if (full) { if (seen.has(full)) continue; seen.add(full); } list.push({ full: full || '', short: full ? shortStore(full) : c, has: !!full }); }
+    for (const s of wd) if (!seen.has(s)) list.push({ full: s, short: shortStore(s), has: true });
+  } else if (!hasAreas && dataStores.length > 1) list = dataStores.map(s => ({ full: s, short: shortStore(s), has: true }));
+  if (state.store && !dataStores.includes(state.store)) state.store = '';
+  if (state.store && list.length && !list.some(x => x.full === state.store)) state.store = '';
+  state.storeList = list;
+  const scopeStores = state.store ? [state.store] : withData(state.area);
+  state.single = scopeStores.length === 1 ? scopeStores[0] : '';
+
+  const sb = $('#storeBar'); sb.hidden = !list.length;
+  sb.innerHTML = list.length ? `<button class="chip" data-store="" aria-pressed="${!state.store}">${state.area ? 'エリア全体' : 'すべての院'}</button>` + list.map(x => x.has
+    ? `<button class="chip" data-store="${esc(x.full)}" aria-pressed="${x.full === state.store}">${esc(x.short)} <b>${attn(all.filter(p => p.store === x.full))}</b></button>`
+    : `<button class="chip" disabled>${esc(x.short)} <small>データなし</small></button>`).join('') : '';
+
+  $('#storeName').textContent = state.store ? shortStore(state.store) : state.area ? state.area : hasAreas ? '全エリア' : (dataStores.length > 1 ? `${dataStores.length}院` : (dataStores[0] || 'データ未読込'));
+  const sd = model.settings.startDay ? toDay(model.settings.startDay) : null;
+  const when = state.single ? `${mdw(storeAsOf(state.single))} 時点のデータ` : `${scopeStores.length}院のデータ`;
+  $('#asOfLabel').textContent = model.counts.res ? `${when}　${sd !== null && sd >= model.dataStart ? md(sd) + ' 以降に回数券を買った患者さん' : '回数券で通っている患者さん'} ${visible().length}人` : '';
+  const today = todayDay();
+  const stale = scopeStores.filter(s => today - storeAsOf(s) >= 3).sort((x, y) => storeAsOf(x) - storeAsOf(y));
+  const warn = $('#warn');
+  let w = '';
+  if (state.dbState === 'loading') w = '読み込み中です…' + (state.loadProg ? ' ' + state.loadProg : '');
+    else if (state.dbState === 'error') w = 'データを読み込めませんでした。ページを開き直してください。';
+  else if (stale.length && state.single) w = `データは${today - storeAsOf(state.single)}日前（${md(storeAsOf(state.single))}）のものです。新しいCSVを入れると最新になります。`;
+  else if (stale.length) w = `データが3日以上前の院があります：${stale.slice(0, 6).map(s => `${shortStore(s)}（${md(storeAsOf(s))}）`).join('、')}${stale.length > 6 ? ` ほか${stale.length - 6}院` : ''}。新しいCSVを入れると最新になります。`;
+  warn.innerHTML = esc(w) + (stale.length && state.dbState === 'ready' && canUpload() && state.tab !== 'csv' ? ' <button class="lk" data-tab="csv">CSVを入れる</button>' : ''); warn.hidden = !w;
+
+  /* 担当者の切り替えは、1つの院に絞れているときだけ出す */
+  const stb = $('#staffBar');
+  if (!state.single) { state.staff = ''; stb.hidden = true; stb.innerHTML = ''; }
+  else {
+    const tk = visible().filter(p => p.isTicket);
+    const staffs = [...new Set(visible().map(p => p.staff))].sort((a, b) => tk.filter(p => p.staff === b).length - tk.filter(p => p.staff === a).length);
+    if (!staffs.includes(state.staff)) state.staff = '';
+    const cnt = s => tk.filter(p => (!s || p.staff === s) && ATTN.includes(p.status)).length;
+    stb.hidden = !staffs.length;
+    stb.innerHTML = staffs.length ? [''].concat(staffs).map(s => `<button data-staff="${esc(s)}" aria-pressed="${s === state.staff}"><span>${s ? esc(s) : '全員まとめて'}</span><small>要フォロー ${cnt(s)}人</small></button>`).join('') : '';
+  }
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === state.tab));
+}
+function emptyHTML() {
+  if (state.dbState === 'loading') return '<div class="list"><div class="empty">読み込み中です…</div></div>';
+  if (!model.counts.res) return `<div class="list"><div class="empty">${canUpload() ? 'データがありません。上の「CSVを入れる」から、Quick ReserveのCSVを入れてください。' : 'まだデータが入っていません。エリマネか管理者がCSVを入れると、ここに表示されます。'}</div></div>`;
+  if (state.area && !state.storeList.some(x => x.has)) return '<div class="list"><div class="empty">このエリアのCSVは、まだ読み込まれていません。上の「CSVを入れる」から、このエリアの院のCSVを入れてください。</div></div>';
+  if (!visible().length) return `<div class="list"><div class="empty">${model.settings.startDay ? md(toDay(model.settings.startDay)) + ' 以降に' : ''}回数券を買った患者さんは、まだいません。購入があった日のCSVを読み込むと、ここに並びます。</div></div>`;
+  return '<div class="list"><div class="empty">当てはまる患者さんはいません。</div></div>';
+}
+
+/* ---- 要フォローの基準（いまの設定の数字で表示） ---- */
+function critHTML() {
+  const st = model.settings;
+  return `<table class="crit">
+    <tr><th colspan="2">要フォローに数える</th></tr>
+    <tr><td><span class="n s-cancelled">${LABEL.cancelled}</span></td><td>最後の来院より後の予約をキャンセルして、取り直していない</td></tr>
+    <tr><td><span class="n s-nobook">${LABEL.nobook}</span></td><td>回数券が残っているのに、次の予約が入っていない</td></tr>
+    <tr><td><span class="n s-late">${LABEL.late}</span></td><td>次の予約はあるが、目安日より${st.tol}日を超えて先になっている</td></tr>
+    <tr><th colspan="2">要フォローに数えない</th></tr>
+    <tr><td><span class="n s-ok">${LABEL.ok}</span></td><td>次の予約が、目安日から${st.tol}日以内に入っている</td></tr>
+    <tr><td><span class="n s-ended">${LABEL.ended}</span></td><td>回数券が終了していて、新しい回数券の購入記録がない</td></tr>
+    <tr><td><span class="n s-away">${LABEL.away}</span></td><td>最後の来院から${st.awayDays}日以上たっていて、次の予約がない</td></tr>
+  </table>
+  <p class="note" style="margin:10px 0 0;max-width:none"><span class="alertsw"></span>最後の来院から${st.alertDays}日以上たっていて次の予約がない人は、一覧の行を薄い赤で表示します。</p>
+  <p class="note" style="margin:6px 0 0;max-width:none">目安日は「最後の来院日＋その人の来院ペース」です。来院ペースは、初めての回数券なら${st.b1}回目まで${st.d1}日ごと、${st.b2}回目まで${st.d2}日ごと、それ以降は${st.d3}日ごと。更新した回数券は更新前の来院間隔、データより前に買った人はこれまでの来院間隔に合わせます。患者さんの詳細で個別に選んだ場合は、そのペースを使います。</p>`;
+}
+
+/* ---- 患者さん一覧 ---- */
+const MIN_CHOICES = [0, 7, 14, 21, 30, 45];
+state.minDays = {}; try { const m = JSON.parse(localStorage.getItem('raiin-min') || '{}'); if (m && typeof m === 'object') for (const k of ['nobook', 'cancelled']) if (MIN_CHOICES.includes(m[k])) state.minDays[k] = m[k]; } catch (e) { /* 覚えていなくても「すべて」から始まるだけ */ }
+const KS = ['cancelled', 'nobook', 'late', 'ok', 'ended', 'away'];
+function sumTable(title, desc, first, extra, rows, total) {
+  const cells = ps => KS.map(k => { const n = ps.filter(p => p.status === k).length; return `<td class="r">${n ? `<span class="n s-${k}">${n}</span>` : '<span style="color:var(--sub)">0</span>'}</td>`; }).join('');
+  const line = r => `<tr><td>${r.cell}</td>${extra ? `<td>${r.extra || ''}</td>` : ''}${r.nodata ? `<td class="r" colspan="${KS.length + 2}" style="color:var(--sub)">まだCSVが読み込まれていません</td>` : `<td class="r">${r.ps.length}</td><td class="r"><b>${r.ps.filter(p => ATTN.includes(p.status)).length}</b></td>${cells(r.ps)}`}</tr>`;
+  return `<div class="card sum"><h2>${title}</h2><p>${desc}</p>
+    <div style="overflow-x:auto"><table><tr><th>${first}</th>${extra ? `<th>${extra}</th>` : ''}<th class="r">回数券の患者さん</th><th class="r">要フォロー</th>${KS.map(k => `<th class="r">${LABEL[k]}</th>`).join('')}</tr>
+    ${rows.map(line).join('')}${total ? line({ cell: '<b>合計</b>', ps: total }) : ''}</table></div></div>`;
+}
+function areaTable() {
+  const all = model.patients.filter(p => p.last && p.tracked), names = state.areas.map(a => a.name);
+  if (model.stores.some(s => !areaOf(s))) names.push(NO_AREA);
+  const rows = names.map(n => {
+    const wd = model.stores.filter(s => inArea(s, n)), conf = (state.areas.find(a => a.name === n) || { stores: wd }).stores.length;
+    return { cell: `<button class="lk" data-area="${esc(n)}">${esc(n)}</button>`, extra: `${wd.length}/${Math.max(conf, wd.length)}院`, ps: all.filter(p => inArea(p.store, n)), nodata: !wd.length };
+  });
+  return sumTable('エリア別のまとめ', 'エリア名を押すと、そのエリアだけに切り替わります。「データあり」は、CSVが読み込まれている院の数です。', 'エリア', 'データあり', rows, all);
+}
+function storeTable() {
+  const all = visible(), today = todayDay();
+  const rows = state.storeList.map(x => {
+    if (!x.has) return { cell: esc(x.short), nodata: true };
+    const d = storeAsOf(x.full), old = today - d >= 3;
+    return { cell: `<button class="lk" data-store="${esc(x.full)}">${esc(x.short)}</button>`, extra: old ? `<span class="n s-late">${md(d)}</span>` : md(d), ps: all.filter(p => p.store === x.full) };
+  });
+  return sumTable('院別のまとめ', '院名を押すと、その院だけに切り替わります。「データの日付」は、その院のCSVを最後に読み込んだ日です。', '院', 'データの日付', rows, all);
+}
+function staffTable() {
+  const tk = visible().filter(p => p.isTicket);
+  const staffs = [...new Set(tk.map(p => p.staff))].sort((a, b) => tk.filter(p => p.staff === b).length - tk.filter(p => p.staff === a).length);
+  if (staffs.length < 2) return '';
+  return sumTable(`${state.storeList.length || state.areas.length ? esc(shortStore(state.single)) + 'の' : ''}スタッフ別のまとめ`, '担当している回数券の患者さんの人数です。名前を押すと、そのスタッフの患者さんだけに切り替わります。', '担当', '',
+    staffs.map(s => ({ cell: `<button class="lk" data-staff="${esc(s)}">${esc(s)}</button>`, ps: tk.filter(p => p.staff === s) })), tk);
+}
+const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者さん</span><span>回数券</span><span>最後の来院</span><span>次回予約</span><span>状況</span>${ct ? '<span class="acth">今日送った</span>' : ''}</div>`;
+function rowHTML(p, ct) {
+  const today = dayISO(todayDay()), list = ct ? contactsOf(p) : [], lock = state.canWrite ? '' : ' disabled';
+  const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const on = list.some(c => c.d === today && c.m === m); return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${on ? '今日の記録を取り消す' : '今日送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}</button>`; }).join('')}</span>`;
+  const alert = !p.booking && ['cancelled', 'nobook', 'away'].includes(p.status) && p.asOf - p.last.day >= model.settings.alertDays; // 予約がなく長く空いている人は薄い赤
+  return `<div class="lrow s-${p.status}${ct ? ' hasact' : ''}${alert ? ' alert' : ''}" data-id="${esc(p.id)}" role="button" tabindex="0">
+    <span class="who"><i class="dot"></i><span class="nmbox"><span class="nm" style="display:block">${esc(pname(p))}</span><small>${esc(tanto(p))}</small></span>${acts.replace('class="acts"', 'class="acts in-who"')}</span>
+    <span><span class="tag${p.renewSoon ? ' soon' : ''}">${esc(ticketText(p))}</span></span>
+    <span class="c-last">${mdw(p.last.day)}<small>${p.asOf - p.last.day}日前</small></span>
+    <span class="c-next">${p.booking ? mdw(p.booking.day) : '—'}</span>
+    <span class="st">${esc(detail(p))}${ctBadge(p)}</span>${acts.replace('class="acts"', 'class="acts at-end"')}
+  </div>`;
+}
+function ctBadge(p) {
+  const c = lastContact(p); if (!c) return '';
+  const back = cameAfter(p, c);
+  return ` <span class="ct${back ? ' back' : ''}">${METHOD[c.m] || esc(c.m)} ${md(toDay(c.d))}${back ? ' → 来院あり' : ' 送信済み'}</span>`;
+}
+/* LINE・手紙の結果：直近90日に送った記録と、そのあとの来院 */
+function contactTable() {
+  const ps = visible(), byKey = new Map(), cut = model.asOf - 90;
+  for (const p of ps) for (const c of contactsOf(p)) {
+    if (toDay(c.d) < cut) continue;
+    const k = state.single ? p.staff : shortStore(p.store);
+    if (!byKey.has(k)) byKey.set(k, { line: 0, letter: 0, all: 0, back: 0 });
+    const r = byKey.get(k); r.all++; if (c.m === 'line') r.line++; else if (c.m === 'letter') r.letter++; if (cameAfter(p, c)) r.back++;
+  }
+  if (!byKey.size) return '';
+  const tot = { line: 0, letter: 0, all: 0, back: 0 }; for (const r of byKey.values()) for (const k in tot) tot[k] += r[k];
+  const pct = r => (r.all ? Math.round(r.back / r.all * 100) + '%' : '—');
+  const line = (name, r) => `<tr><td>${name}</td><td class="r">${r.line}</td><td class="r">${r.letter}</td><td class="r">${r.all}</td><td class="r"><b>${r.back}</b></td><td class="r">${pct(r)}</td></tr>`;
+  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>直近90日に送った記録と、そのあと来院があった件数です。来院はCSVを入れると反映されます。</p>
+    <div style="overflow-x:auto"><table><tr><th>${state.single ? '担当' : '院'}</th><th class="r">LINE</th><th class="r">手紙</th><th class="r">合計</th><th class="r">そのあと来院</th><th class="r">来院した割合</th></tr>
+    ${[...byKey.entries()].sort((a, b) => b[1].all - a[1].all).map(([k, r]) => line(esc(k), r)).join('')}${byKey.size > 1 ? line('<b>合計</b>', tot) : ''}</table></div></div>`;
+}
+function viewFollow() {
+  const all = scoped();
+  if (state.dbState === 'loading' || !model.counts.res) return emptyHTML();
+  let h = `<p class="guide">声をかけたい順に並べています。行を押すと、その人の来院カレンダーとこの先の目安が開き、来院ペースも変えられます。</p>
+    <details class="critbox" data-g="crit"${state.open.crit ? ' open' : ''}><summary>要フォローの基準</summary>${critHTML()}</details>`;
+  if (!state.staff) {
+    if (state.areas.length && !state.area && !state.store) h += areaTable();
+    else if (state.storeList.length && !state.store) h += storeTable();
+    if (state.single) h += staffTable();
+  }
+  h += contactTable();
+  if (!all.length) return h + emptyHTML();
+  for (const g of GROUPS) {
+    const rows = all.filter(p => p.status === g.k).sort(sorter);
+    if (!rows.length) continue;
+    const canMin = g.k === 'nobook' || g.k === 'cancelled', min = canMin ? (state.minDays[g.k] || 0) : 0; // 最後の来院からの日数で絞り込める一覧
+    const canCt = canMin || g.k === 'away', onlyNew = canCt && !!state.onlyNew[g.k]; // 前回の来院のあと、まだLINEも手紙も送っていない人だけ
+    let shown = min ? rows.filter(p => p.asOf - p.last.day >= min) : rows;
+    if (onlyNew) shown = shown.filter(p => !contactedSinceVisit(p));
+    const fbar = !canCt ? '' : `<div class="minbar">${canMin ? `<span>最後の来院から</span><div class="seg" role="group" aria-label="最後の来院からの日数で絞り込み">${MIN_CHOICES.map(n => `<button data-min="${n}" data-ming="${g.k}" aria-pressed="${n === min}">${n ? n + '日以上' : 'すべて'}</button>`).join('')}</div>` : ''}
+      <div class="seg" role="group" aria-label="連絡の有無で絞り込み"><button data-onlynew="0" data-ong="${g.k}" aria-pressed="${!onlyNew}">すべて</button><button data-onlynew="1" data-ong="${g.k}" aria-pressed="${onlyNew}">まだ連絡していない人</button></div></div>`;
+    const emptyMsg = `<div class="list"><div class="empty">${onlyNew ? '条件に当てはまる人は、全員に連絡済みです。' : `最後の来院から${min}日以上たっている人はいません。`}</div></div>`;
+    const open = state.open[g.k] !== undefined ? state.open[g.k] : g.open;
+    const head = headFor(canCt);
+    let body;
+    if (g.k === 'away') { // 回数券が残っている人を先に、終了している人を後に
+      const parts = [
+        ['回数券が残っている人', '回数券を買ったまま、途中で来なくなっています。', shown.filter(p => !done(p) && p.remaining !== null)],
+        ['回数券の残りが分からない人', '購入がデータより前のため、残り回数を数えられません。', shown.filter(p => !done(p) && p.remaining === null)],
+        ['回数券が終了している人', '回数券を終えたあと、更新せずに来なくなっています。', shown.filter(p => done(p))],
+      ].filter(x => x[2].length);
+      body = fbar + (parts.length ? '' : emptyMsg) + parts.map(x => `<h3 class="sub">${x[0]} <b>${x[2].length}人</b><small>${x[1]}</small></h3><div class="list">${head}${x[2].map(p => rowHTML(p, true)).join('')}</div>`).join('');
+    } else body = fbar + (shown.length ? `<div class="list">${head}${shown.map(p => rowHTML(p, canCt)).join('')}</div>` : emptyMsg);
+    h += `<details class="group s-${g.k}" data-g="${g.k}"${open ? ' open' : ''}><summary><i class="dot"></i><span class="gt">${g.title}</span><b>${shown.length !== rows.length ? `${shown.length}人<i class="of"> / ${rows.length}人中</i>` : `${rows.length}人`}</b><small>${g.help.replace('{n}', model.settings.awayDays)}</small></summary>${body}</details>`;
+  }
+  return h;
+}
+
+/* ---- 来院カレンダー ---- */
+function viewCal() {
+  const tk = scoped().filter(p => p.isTicket);
+  const rows = tk.filter(p => state.calMode === 'all' || ATTN.includes(p.status)).sort(sorter);
+  let h = `<p class="guide">1行が1人で、直近3か月を表示しています。●が来院した日で、●と●の間が広いほど間隔が空いています。うすい帯は「次はこのあたりで来てほしい」目安です。</p>
+    <div class="bar"><div class="seg" role="group" aria-label="表示する患者さん">
+      <button data-calmode="attn" aria-pressed="${state.calMode !== 'all'}">要フォローの人だけ</button>
+      <button data-calmode="all" aria-pressed="${state.calMode === 'all'}">回数券の全員</button></div></div>`;
+  if (!rows.length) return h + emptyHTML();
+  const cs = getComputedStyle(document.documentElement);
+  const cell = parseFloat(cs.getPropertyValue('--cell')) || 16;
+  const tol = model.settings.tol, a = Math.max(...rows.map(p => p.asOf)), from = Math.max(model.dataStart, a - 91);
+  let to = Math.max(a + 28, model.dataEnd);
+  for (const p of rows) { if (p.booking) to = Math.max(to, p.booking.day + 2); if (p.target !== null && !done(p)) to = Math.max(to, p.target + tol + 2); }
+  to = Math.min(to, a + 70);
+  const n = to - from + 1, W = n * cell, x = d => (d - from) * cell + cell / 2;
+  const firstMon = (8 - dayToDate(from).getUTCDay()) % 7; // from から最初の月曜までの日数
+
+  let head = '', lines = '';
+  for (let d = from; d <= to; d++) {
+    const dt = dayToDate(d);
+    if (dt.getUTCDate() === 1 || d === from) {
+      head += `<span class="mlab" style="left:${(d - from) * cell + 4}px">${dt.getUTCMonth() + 1}月</span>`;
+      if (d !== from) lines += `<i class="vline" style="left:${(d - from) * cell}px"></i>`;
+    }
+    if (dt.getUTCDay() === 1) head += `<span class="dlab" style="left:${x(d)}px">${dt.getUTCDate()}</span>`;
+  }
+  if (a >= from && a <= to) lines += `<i class="vline today" style="left:${x(a)}px"></i>`;
+
+  h += `<div class="legend">
+    <span><i class="mk v" style="position:static;transform:none"></i>来院</span>
+    <span><i class="mk v buy" style="position:static;transform:none;margin:0 4px"></i>回数券を購入した日</span>
+    <span><i class="mk v end" style="position:static;transform:none"></i>最後の1回（購入なし）</span>
+    <span><i class="mk b" style="position:static;transform:none"></i>次回予約</span>
+    <span><b style="color:var(--shu)">×</b>キャンセル</span>
+    <span><i class="band" style="position:static;transform:none;width:28px"></i>次の来院の目安</span>
+    <span><i class="band over" style="position:static;transform:none;width:28px"></i>目安を過ぎて予約なし</span>
+  </div>`;
+  h += `<div class="strip"><div class="strip-in" style="width:calc(var(--label-w) + ${W}px)">
+    <div class="srow hd"><div class="slabel">${rows.length}人</div><div class="track" style="width:${W}px">${head}${a >= from && a <= to ? `<span class="todaylab" style="left:${x(a)}px">${md(a)}</span>` : ''}</div></div>`;
+  for (const p of rows) {
+    let m = '';
+    const vs = p.visits.filter(v => v.day >= from && v.day <= to);
+    if (vs.length > 1) m += `<i class="link" style="left:${x(vs[0].day)}px;width:${x(vs[vs.length - 1].day) - x(vs[0].day)}px"></i>`;
+    if (p.target !== null && !done(p) && p.target + tol >= from) {
+      const l = Math.max(p.target - tol, from), r = Math.min(p.target + tol, to);
+      if (r >= l) m += `<i class="band${!p.booking && p.asOf > p.target + tol ? ' over' : ''}" style="left:${(l - from) * cell}px;width:${(r - l + 1) * cell}px" title="目安日 ${md(p.target)}"></i>`;
+    }
+    if (p.booking && p.booking.day <= to) m += `<i class="link dash" style="left:${x(Math.max(p.last.day, from))}px;width:${x(p.booking.day) - x(Math.max(p.last.day, from))}px"></i>`;
+    for (const c of p.cancels) if (c >= from && c <= to) m += `<span class="mk x" style="left:${x(c)}px" title="${md(c)} キャンセル">×</span>`;
+    for (const v of vs) m += `<i class="mk v${v.buys.length ? ' buy' : (v.renewItem ? ' end' : '')}" style="left:${x(v.day)}px" title="${md(v.day)} 来院"></i>`;
+    if (p.booking && p.booking.day <= to) m += `<i class="mk b" style="left:${x(p.booking.day)}px" title="${md(p.booking.day)} 予約"></i>`;
+    h += `<div class="srow"><button class="slabel" data-id="${esc(p.id)}" title="${esc(LABEL[p.status])}"><i class="dot s-${p.status}"></i><span class="nm">${esc(p.name || ('ID ' + p.id))}</span><span class="tk">${esc(p.tk ? p.tk.type : '')}</span></button>
+      <div class="track" style="width:${W}px;background-position-x:${firstMon * cell}px">${m}</div></div>`;
+  }
+  h += `<div style="position:absolute;top:0;bottom:0;left:var(--label-w);width:${W}px;pointer-events:none;z-index:1">${lines}</div></div></div>`;
+  return h;
+}
+
+/* ---- 更新見込み ---- */
+function viewRenew() {
+  const sc = scoped().filter(p => p.isTicket);
+  const act = sc.filter(p => p.status !== 'ended' && p.status !== 'away'), known = act.filter(p => p.endDay !== null);
+  const months = new Map();
+  for (const p of known) { const k = dayISO(p.endDay).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(p); }
+  const keys = [...months.keys()].sort();
+  if (!keys.includes(state.month)) state.month = keys[0] || null;
+  const max = Math.max(1, ...keys.map(k => months.get(k).length));
+  const mlabel = k => `${+k.slice(0, 4)}年${+k.slice(5)}月`;
+
+  let left = `<div class="card"><h2>回数券が終了する見込み</h2>
+    <p>今のペースで通った場合に最後の1回が来る月です。次回予約がある人は予約日から、ない人は目安日から数えています。</p>`;
+  if (!keys.length) left += '<div class="empty">対象の患者さんがまだいません。</div>';
+  else {
+    left += '<div class="bars">' + keys.map(k => `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}</span><span><i style="width:${months.get(k).length / max * 100}%"></i></span><span>${months.get(k).length}人</span></button>`).join('') + '</div>';
+    const ps = months.get(state.month).slice().sort((a, b) => a.endDay - b.endDay);
+    left += `<h3 style="font-size:14px;margin:18px 0 0">${mlabel(state.month)}に終了する見込みの患者さん</h3><div class="mini">` +
+      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃</small></span></button>`).join('') + '</div>';
+  }
+  left += '</div>';
+
+  const sd0 = model.settings.startDay ? toDay(model.settings.startDay) : null;
+  const rp = model.renewPoints.filter(x => x.p.last && x.t.known && (sd0 === null || x.t.start >= sd0) && (!state.staff || x.p.staff === state.staff) && inArea(x.p.store, state.area) && (!state.store || x.p.store === state.store));
+  const yes = rp.filter(x => x.renewed).length, no = rp.length - yes;
+  let right = `<div class="card"><h2>更新のタイミングを迎えた患者さん</h2>
+    <p>対象の回数券で最後の1回（「回数券更新」の施術）を受けた人と、そのあと回数券を購入したかどうかです。</p>`;
+  if (!rp.length) right += '<div class="empty">該当する患者さんはいません。</div>';
+  else {
+    right += `<div class="kv"><span><b>${rp.length}</b>人が更新のタイミング</span><span><b>${yes}</b>人が更新</span><span><b>${no}</b>人は更新せず終了</span></div>
+      <div class="split" role="img" aria-label="更新${yes}人、更新せず終了${no}人"><i class="a" style="width:${yes / rp.length * 100}%"></i><i class="b" style="width:${no / rp.length * 100}%"></i></div>`;
+    if (no) right += `<h3 style="font-size:14px;margin:16px 0 0">更新せず終了した${no}人</h3><div class="mini">` +
+      rp.filter(x => !x.renewed).sort((a, b) => a.t.endDay - b.t.endDay).map(x => `<button data-id="${esc(x.p.id)}"><span><b>${esc(pname(x.p))}</b> <small>${esc(tanto(x.p))}</small></span><span>${esc(x.t.type)} <small>${md(x.t.endDay)} が最後の1回・次回予約${x.p.booking ? 'あり' : 'なし'}</small></span></button>`).join('') + '</div>';
+  }
+  right += '</div>';
+  const soon = act.filter(p => p.renewSoon).sort((x, y) => x.remaining - y.remaining);
+  let top = `<p class="guide">この先、いつ・何人の回数券が終了するかの見込みと、すでに更新のタイミングを迎えた人の結果です。</p>`;
+  if (soon.length) top += `<div class="card" style="margin-bottom:20px"><h2>そろそろ更新の声かけをする患者さん</h2><p>回数券の残りが${model.settings.soon}回以下です。</p><div class="mini">` +
+    soon.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button>`).join('') + '</div></div>';
+  return `${top}<div class="grid2">${left}${right}</div>`;
+}
+
+/* ---- CSVを入れる ---- */
+function viewCsv() {
+  const c = model.counts, today = todayDay(), from = today - 61, dis = canUpload() ? '' : ' disabled';
+  const saved = state.savedAt ? (() => { const d = new Date(state.savedAt); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() : '';
+  /* 院ごとの「最後に入れた日」。エリアを選んでいるときは、そのエリアの院だけ */
+  const rows = [], seen = new Set();
+  for (const a of state.areas) for (const x of a.stores) {
+    const full = model.stores.find(st => shortStore(st).includes(keyOf(x))); if (full) seen.add(full);
+    if (!state.area || state.area === a.name) rows.push({ area: a.name, short: full ? shortStore(full) : x, d: full ? storeAsOf(full) : null });
+  }
+  for (const st of model.stores) if (!seen.has(st) && (!state.area || state.area === NO_AREA)) rows.push({ area: state.areas.length ? NO_AREA : '', short: shortStore(st), d: storeAsOf(st) });
+  const dateCell = d => d === null ? '<span style="color:var(--sub)">まだ入っていません</span>' : (today - d >= 3 ? `<span class="n s-late">${md(d)}</span>` : md(d));
+  const showArea = !state.area && state.areas.length > 0;
+  return `<p class="guide">Quick Reserveから出したCSVをここに入れると、その院を見ている全員の画面が最新になります。週に1回が目安です。</p><div class="grid2 csv">
+  <div class="card"><h2>Quick Reserveで出すもの</h2><p>院ごとに、同じ手順をくり返します。</p>
+    <ol class="steps">
+      <li>Quick Reserveの右上にある「店舗切替」で、出したい院を選びます。</li>
+      <li>CSVを出力する画面を開きます。</li>
+      <li>次の4つだけにチェックを入れます。
+        <ul class="ticks"><li>予約データ</li><li>精算データ</li><li>精算アイテム(販売商品)データ</li><li>顧客データ</li></ul>
+        <small>売上明細・売上台帳・未収金・閉店処理・経費・シフト・スタッフは、チェックを外します。</small></li>
+      <li>期間を <b class="period">${ymd(from)} 〜 ${ymd(today + 31)}</b> にします。<small>2か月前から1か月先までです。先の予約やそのキャンセルも入るので、次回予約の判定が正確になります。毎回この期間で大丈夫です。</small></li>
+      <li>「選択した4件をダウンロード」を押します。</li>
+      <li>ダウンロードされた4つのファイルを、まとめて「ここに入れる」の枠に入れます。</li>
+    </ol>
+    <p class="first"><b>その院で初めて入れるときだけ</b>　上の4つを入れたあとに、顧客データだけ、期間のはじめを開院した頃の日付にしてもう一度出して入れます。昔からの患者さんにも名前が入ります。</p>
+  </div>
+  <div class="card"><h2>ここに入れる</h2><p>何院分でも、まとめて入れられます。どの院のデータかは自動で見分けます。</p>
+    ${canUpload() ? `<div class="drop big" id="drop"><label class="btn" style="display:inline-block;line-height:26px">CSVファイルを選ぶ<input type="file" id="file" accept=".csv,text/csv" multiple hidden></label><br><span>または、ここにファイルをドロップ</span></div>`
+      : `<div class="noedit"><b>CSVは、エリマネか管理者が入れます。</b>スタッフのアカウントでは、患者さんの確認とLINE・手紙の記録、来院ペースの変更ができます。</div>`}
+    ${isAM() ? `<p class="hint">入れられるのは担当の院（${esc(myStores().join('・'))}）のCSVです。</p>` : ''}
+    <div id="loadmsg">${state.loadMsg}</div>
+    ${rows.length ? `<h3 style="font-size:14px;margin:18px 0 6px">最後に入れた日${state.area ? `（${esc(state.area)}）` : ''}</h3>
+    <table>${rows.map(r => `<tr>${showArea ? `<td style="color:var(--sub)">${esc(r.area)}</td>` : ''}<td>${esc(r.short)}</td><td class="r">${dateCell(r.d)}</td></tr>`).join('')}</table>` : ''}
+    <ul class="facts">
+      <li>いま入っているデータ　<b>予約</b> ${c.res}件${c.res ? `（${md(model.dataStart)}〜${md(model.dataEnd)}）` : ''}　<b>精算</b> ${c.pay}件　<b>精算アイテム</b> ${c.items}件　<b>顧客名</b> ${c.cust}人分</li>
+      ${saved ? `<li>最後の保存 ${saved}</li>` : ''}
+      <li><label>データの基準日を手で直す${model.stores.length > 1 ? '（全院をこの日にそろえる）' : ''} <input type="date" id="asOf" value="${dayISO(model.asOf)}"${dis}></label></li>
+      <li>氏名以外の個人情報（電話番号や住所など）は、このページには保存しません。</li>
+      <li>2回目から早く開けるよう、来院の記録をこの端末のブラウザに置いています。患者さんの氏名は端末には置きません。ログアウトすると消えます。</li>
+    </ul>
+    ${isAdmin() ? `<details class="mig"><summary>Claude版のデータを移す（最初の1回だけ）</summary><p>Claude版から書き出した「引っ越し用ファイル」（.json）を選ぶと、来院データ・LINE・手紙の記録・来院ペース・設定・エリアをまとめて移します。何回入れても重複はしません。</p><label class="btn ghost" style="display:inline-block;line-height:24px">ファイルを選ぶ<input type="file" id="mig" accept=".json,application/json" hidden></label></details>` : ''}
+  </div></div>`;
+}
+
+/* ---- 設定 ---- */
+function viewSet() {
+  const s = model.settings, c = model.counts, adm = canManage(), dis = adm ? '' : ' disabled';
+  const num = (k, min, max) => `<input type="number" inputmode="numeric" min="${min}" max="${max}" value="${s[k]}" data-set="${k}" aria-label="${k}"${dis}>`;
+  return `<p class="guide">${adm ? '対象にする患者さん、判定に使う目安、エリアと院の割り振りを変えられます。ここで変えた内容は、このページを見る全員に反映されます。' : '設定を変えられるのは、管理者だけです。'}</p><div class="grid2">
+  <div class="card"><h2>対象にする患者さん</h2><p>この日以降に回数券を買った患者さんだけを表示します。空にするか、データのいちばん古い日より前の日付にすると、回数券で通っている全員が対象になります（データより前に買った人は、残り回数なしで表示します）。</p>
+    <label>開始日 <input type="date" id="startDay" value="${esc(s.startDay || '')}"${dis}></label>
+    <h2 style="margin-top:24px">来院ペースの目安</h2><p>全員に当てはめる基準です。患者さんごとのペースは、一覧から名前を押して変えられます。</p>
+    <div class="rule">
+      <b>初めての回数券</b><br>
+      1〜${num('b1', 1, 60)}回目は ${num('d1', 1, 90)}日ごと、<br>
+      ${num('b2', 1, 60)}回目までは ${num('d2', 1, 90)}日ごと、それ以降は ${num('d3', 1, 90)}日ごと<br>
+      <b>更新した回数券</b><br>
+      更新前の来院間隔に合わせます。来院の記録が足りない人は ${num('renewDays', 1, 90)}日ごと<br>
+      <b>判定</b><br>
+      目安日から ${num('tol', 0, 30)}日までは「順調」に含める<br>
+      残り ${num('soon', 0, 20)}回以下になったら更新の声かけ対象にする<br>
+      最後の来院から ${num('alertDays', 7, 120)}日以上で次の予約がない人は、一覧の行を薄い赤にする<br>
+      最後の来院から ${num('awayDays', 14, 365)}日以上で次の予約がない人は「しばらく来ていない」に分ける
+    </div>
+    ${adm ? '<p style="margin:12px 0 0"><button class="btn ghost" data-act="resetSet">目安を初期値に戻す</button></p>' : ''}
+  </div>
+  <div class="card"><h2>エリアと院</h2><p>1行に1エリアで「エリア名：院名・院名…」と書きます。院名は、Quick Reserveの店舗名に入っている名前（千葉院など）にしてください。</p>
+    <textarea id="areasText" rows="${Math.max(4, state.areas.length + 1)}" aria-label="エリアと院"${dis}>${esc(state.areas.map(a => a.name + '：' + a.stores.join('・')).join('\n'))}</textarea>
+    ${adm ? '<p style="margin:10px 0 0"><button class="btn" data-act="saveAreas">エリアを保存</button></p>' : ''}
+    ${state.areas.length && model.stores.some(x => !areaOf(x)) ? `<p style="margin:10px 0 0;color:var(--yamabuki)">どのエリアにも入っていない院があります：${model.stores.filter(x => !areaOf(x)).map(x => esc(shortStore(x))).join('、')}</p>` : ''}
+  </div>
+  <div class="card" style="grid-column:1/-1"><h2>要フォローの基準</h2><p>上の数字を変えると、ここの基準も変わります。</p>${critHTML()}</div>
+  <div class="card" style="grid-column:1/-1"><h2>判定のしかた</h2>
+    <ul class="plain">
+      <li>同じ日の予約（回数券の施術とVIP施術など）は1回の来院として数えます。削除済みの予約はキャンセルとして扱います。</li>
+      <li>何回目かは、回数券の購入日からの「回数券消化」を数えています。同じ日に同じ回数券を2枚買った場合は合算します（R15が2枚ならR30）。</li>
+      <li>「口コミ施術」「VIP施術」「都度」「次回支払い未定」は、来院としては数えますが、回数券の回数には入れません。「0.5回分」は0.5回として数えます。</li>
+      <li>回数券が残っているあいだに同じ券種の購入が記録された場合は、分割払いの2回目以降とみなして、新しい回数券としては数えません。</li>
+      <li>「回数券更新」の施術は、その回数券の最後の1回として数えます。同じ日か後日に回数券の購入があれば更新、なければ「更新せず終了」です。</li>
+      <li>Quick Reserveの「次回予約までの日数」はキャンセル済みの予約も数えるため、このアプリではキャンセル分を飛ばして次の予約を探しています。</li>
+      <li>回数券の購入がデータより前の人は、残り回数を数えられません。来院の間隔はこれまでの実績から目安を出し、次回予約の有無とあわせて判定します。</li>
+    </ul>
+  </div></div>`;
+}
+
+/* ---- 患者さんの詳細 ---- */
+function calendarsHTML(p) {
+  const a = p.asOf, tol = model.settings.tol;
+  const marks = new Map(); const put = (d, c) => marks.set(d, ((marks.get(d) || '') + ' ' + c).trim());
+  const showT = p.target !== null && !done(p);
+  if (showT) for (let d = p.target - tol; d <= p.target + tol; d++) put(d, 'win' + (!p.booking && a > p.target + tol ? ' over' : ''));
+  for (const c of p.cancels) put(c, 'cx');
+  for (const v of p.visits) put(v.day, 'v' + (v.renewItem && !v.buys.length ? ' end' : ''));
+  if (p.booking) put(p.booking.day, 'bk');
+  put(a, 'td');
+  const ds = [...p.visits.map(v => v.day), ...p.cancels, a]; if (p.booking) ds.push(p.booking.day); if (showT) ds.push(p.target);
+  let first = dayToDate(Math.min(...ds)), last = dayToDate(Math.max(...ds));
+  const lim = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() - 3, 1)); if (first < lim) first = lim; // 長く通っている人は、直近4か月を表示する
+  let y = first.getUTCFullYear(), m = first.getUTCMonth(), out = '', guard = 0;
+  while ((y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth())) && guard++ < 4) {
+    const start = Math.round(Date.UTC(y, m, 1) / DAY_MS), len = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const pad = (dayToDate(start).getUTCDay() + 6) % 7;
+    let g = ['月', '火', '水', '木', '金', '土', '日'].map(w => `<span class="w">${w}</span>`).join('') + '<span></span>'.repeat(pad);
+    for (let i = 0; i < len; i++) g += `<span class="c ${marks.get(start + i) || ''}">${i + 1}</span>`;
+    out += `<div class="cal"><h4>${y}年${m + 1}月</h4><div class="g">${g}</div></div>`;
+    m++; if (m > 11) { m = 0; y++; }
+  }
+  const over = showT && !p.booking && a > p.target + tol;
+  const lg = `<div class="legend cal-lg">
+    <span><i class="sw v"></i>来院した日</span>
+    ${p.booking ? '<span><i class="sw bk"></i>次回予約</span>' : ''}
+    ${p.cancels.length ? '<span><b class="cx">12</b>キャンセルした日</span>' : ''}
+    ${showT ? `<span><i class="sw win${over ? ' over' : ''}"></i>${over ? '来てほしかった時期（予約なし）' : '次に来てほしい時期'}（目安日 ${md(p.target)} の前後${tol}日）</span>` : ''}
+    <span><i class="sw td"></i>データの基準日（${md(a)}）</span></div>`;
+  return `<div class="cals">${out}</div>${lg}`;
+}
+function openPatient(id, keep) {
+  const p = model.patients.find(q => q.id === id); if (!p || !p.last) return;
+  state.openId = id;
+  const t = p.tk;
+  let tline = '回数券なし';
+  if (t) {
+    tline = done(p) ? `${t.type}（${t.N}回券、${t.known ? md(t.start) + '購入' : '購入日はデータより前'}）は終了`
+      : p.used !== null ? `${t.type}（${t.N}回券、${md(t.start)}購入${t.renewal ? '・更新' : ''}）${p.used}回使用、残り${p.remaining}回`
+        : `${t.type}（${t.N}回券）購入日がデータより前のため、残り回数は不明`;
+    if (t.multi) tline += '。同じ日に複数枚購入';
+    if (t.pays > 1) tline += `。支払いの記録が${t.pays}回（分割払いとして1枚に数えています）`;
+    if (t.mixed) tline += '。施術メニューの券種が混在';
+  }
+  const ev = [];
+  for (const v of p.visits) {
+    const names = [...new Set(v.names.map(n => n.replace('回数券', '')))];
+    ev.push({ day: v.day, cls: '', what: names.join('、') || '（会計なし）', visit: true });
+  }
+  for (const c of p.cancels) ev.push({ day: c, cls: 'cx', what: 'キャンセル' });
+  if (p.booking) ev.push({ day: p.booking.day, cls: 'fut', what: '予約' });
+  ev.sort((x, y) => x.day - y.day);
+  let prev = null, hist = '';
+  for (const e of ev) {
+    const gap = prev !== null && (e.visit || e.cls === 'fut') ? (e.day - prev) + '日' : '';
+    hist += `<tr class="${e.cls}"><td style="white-space:nowrap">${mdw(e.day)}</td><td>${esc(e.what)}</td><td class="r">${gap}</td></tr>`;
+    if (e.visit) prev = e.day;
+  }
+  let plan = '';
+  const fut = p.plan.filter(x => x.kind !== 'done');
+  if (fut.length) {
+    const K = { booked: '予約済み', target: '目安', plan: '見込み' };
+    plan = '<table><tr><th>回</th><th>日付</th><th></th></tr>' + fut.map(x => `<tr><td>${x.n}回目</td><td>${mdw(x.day)}</td><td>${K[x.kind]}</td></tr>`).join('') + '</table>';
+  } else if (done(p)) plan = '<p class="note">回数券は終了しています。新しい回数券の購入記録はありません。</p>';
+  else if (t) plan = `<p class="note">購入がデータより前のため、残り回数は出せません。${p.target !== null ? `次に来てほしい目安日は ${mdw(p.target)} です。` : ''}</p>`;
+  else plan = '<p class="note">回数券の記録がありません。</p>';
+
+  let paceHTML = '';
+  if (t && p.pace && !done(p)) {
+    const st = model.settings, cur = p.pace.manual || 0, lock = state.canWrite ? '' : ' disabled';
+    const src = p.pace.auto && p.pace.auto.own ? 'これまで' : '更新前';
+    const autoTxt = p.pace.auto ? (p.pace.auto.from !== null ? `${src}の間隔（約${p.pace.auto.from}日）から、${p.pace.auto.days}日ごと` : `${src}の記録が少ないため、${p.pace.auto.days}日ごと`)
+      : `${st.b1}回目まで${st.d1}日ごと、${st.b2}回目まで${st.d2}日ごと、以降${st.d3}日ごと`;
+    const names = { 7: '週1', 14: '2週ごと', 21: '3週ごと', 28: '月1' };
+    paceHTML = `<h3>この患者さんの来院ペース</h3><div class="seg pace" role="group" aria-label="来院ペース">
+      <button data-pace="0" data-pid="${esc(p.id)}" aria-pressed="${cur === 0}"${lock}>おまかせ</button>
+      ${PACE_CHOICES.map(d => `<button data-pace="${d}" data-pid="${esc(p.id)}" aria-pressed="${cur === d}"${lock}>${names[d]}</button>`).join('')}</div>
+      <p class="note" style="margin-top:6px">おまかせの場合：${autoTxt}${cur ? '' : '（いまはこれで判定中）'}${state.canWrite ? '' : '<br>このアカウントは「見るだけ」の権限なので、来院ペースは変えられません。'}</p>`;
+  }
+  let ctHTML = '';
+  if (t) {
+    const list = contactsOf(p).slice().sort((a, b) => b.d.localeCompare(a.d)), lockC = state.canWrite ? '' : ' disabled', pid = esc(p.id);
+    ctHTML = `<h3>LINE・手紙の記録</h3><div class="ctbtns"><button class="btn" data-ct="line" data-pid="${pid}"${lockC}>LINEを送った</button><button class="btn ghost" data-ct="letter" data-pid="${pid}"${lockC}>手紙を送った</button></div>
+      ${list.length ? `<table class="ctlog">${list.map(c => `<tr><td style="white-space:nowrap">${mdw(toDay(c.d))}</td><td>${METHOD[c.m] || esc(c.m)}</td><td>${cameAfter(p, c) ? '<span class="n s-ok">そのあと来院あり</span>' : '<span style="color:var(--sub)">まだ来院なし</span>'}</td><td class="r">${state.canWrite ? `<button class="lk" data-ctdel="${esc(c.d)}" data-ctm="${esc(c.m)}" data-pid="${pid}">取り消す</button>` : ''}</td></tr>`).join('')}</table>`
+        : '<p class="note" style="margin-top:8px">まだ記録がありません。送ったらボタンを押してください。今日の日付で残ります。</p>'}
+      ${state.canWrite ? '' : '<p class="note">このアカウントは「見るだけ」の権限なので、記録できません。</p>'}`;
+  }
+  $('#dlg').innerHTML = `<div class="dh"><div><h2 id="dlgTitle">${esc(pname(p))}</h2><small>${p.name ? '顧客ID ' + esc(p.id) + '　' : ''}${esc(tanto(p))}</small><small>${esc(tline)}</small></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
+    <div class="db"><div class="say s-${p.status}"><b>${LABEL[p.status]}</b>　${esc(detail(p))}</div>
+    ${ctHTML}${paceHTML}<h3>カレンダー</h3>${calendarsHTML(p)}
+    <div class="cols2"><div><h3>来院の記録</h3><table><tr><th>日付</th><th>内容</th><th class="r">前回から</th></tr>${hist}</table></div>
+    <div><h3>この先の目安</h3>${plan}</div></div></div>`;
+  const dlg = $('#dlg'), top = dlg.scrollTop; if (!dlg.open) dlg.showModal(); dlg.scrollTop = keep ? top : 0;
+}
+
+/* ---- CSV読み込み ---- */
+async function loadFiles(files) {
+  if (!canUpload()) { flash('CSVを入れられるのは、エリマネと管理者です。'); return; }
+  const parsed = [], msgs = [];
+  for (const f of files) {
+    const buf = await f.arrayBuffer();
+    let t = parseCSV(new TextDecoder('utf-8').decode(buf)), type = detectType(t.cols);
+    if (!type) { try { t = parseCSV(new TextDecoder('shift_jis').decode(buf)); type = detectType(t.cols); } catch (e) { /* 対応していない文字コード */ } }
+    if (!type) msgs.push(`${esc(f.name)}：見出しを読み取れませんでした。Quick Reserveから出力したままのCSVを選んでください。`);
+    else if (type === 'スタッフ') msgs.push(`${esc(f.name)}：スタッフデータは使いません（担当者名は予約データから取ります）。`);
+    else parsed.push({ f, t, type });
+  }
+  const skipped = new Set(), asOfNew = {};
+  for (const { f, t, type } of parsed) {
+    let which = '';
+    if (type === '予約') {
+      const si = t.cols.indexOf('店舗名'), all = si < 0 ? [] : [...new Set(t.rows.map(r => (r[si] || '').trim()).filter(Boolean))];
+      const ok = all.filter(canUploadStore);
+      for (const x of all) if (!ok.includes(x)) skipped.add(shortStore(x));
+      if (si >= 0) t.rows = t.rows.filter(r => ok.includes((r[si] || '').trim())); // 担当していない院の行は入れない
+      const m = f.name.normalize('NFC').match(/出力(\d{2})(\d{2})(\d{2})/);
+      const d = m ? toDay(`20${m[1]}-${m[2]}-${m[3]}`) : todayDay();
+      if (d !== null) for (const x of ok) if (asOfNew[x] === undefined || d > asOfNew[x]) asOfNew[x] = d;
+      which = ok.length ? `（${ok.map(x => esc(shortStore(x))).join('、')}）` : '';
+    }
+    const n = ingest(data, type, t);
+    msgs.push(`${esc(f.name)}：${type} ${n}件${which}を読み込みました。`);
+  }
+  if (skipped.size) msgs.push(`<b>${[...skipped].map(esc).join('、')}</b> は担当の院ではないため、保存していません。`);
+  /* 今回のファイルに関係する院を探す */
+  const touched = new Set(Object.keys(asOfNew));
+  const custStores = new Map(); for (const r of data.res.values()) { if (!custStores.has(r.cust)) custStores.set(r.cust, new Set()); custStores.get(r.cust).add(r.store); }
+  for (const { t, type } of parsed) {
+    const ix = c => t.cols.indexOf(c);
+    if (type === '精算') { const i = ix('予約ID'); for (const r of t.rows) { const x = data.res.get((r[i] || '').trim()); if (x) touched.add(x.store); } }
+    else if (type === '精算アイテム') { const i = ix('会計ID'); for (const r of t.rows) { const p = data.pay.get((r[i] || '').trim()); const x = p && data.res.get(p.res); if (x) touched.add(x.store); } }
+    else if (type === '顧客') { const i = ix('顧客ID'); for (const r of t.rows) { const ss = custStores.get((r[i] || '').trim()); if (ss) for (const x of ss) touched.add(x); } }
+  }
+  const targets = [...touched].filter(canUploadStore);
+  state.loadMsg = msgs.join('<br>');
+  rebuild(); render();
+  if (!targets.length) return;
+  enqueue(async () => {
+    try {
+      for (const full of targets) {
+        const a = asOfNew[full] !== undefined ? Math.max(asOfNew[full], (storeData[sid(full)] && storeData[sid(full)].asOf) || 0) : ((storeData[sid(full)] && storeData[sid(full)].asOf) || todayDay());
+        await saveStore(full, data, a);
+      }
+      mergeAll(); rebuild();
+      flash(`保存しました（${targets.map(shortStore).join('、')}）。ほかの人の画面にも反映されます。`);
+    } catch (e) { flash(denied(e) ? '保存する権限がありませんでした。担当の院か確認してください。' : '保存できませんでした。もう一度読み込んでください。'); }
+  });
+}
+
+/* ---- Claude版からの引っ越し（管理者・最初の1回） ---- */
+async function importMigration(file) {
+  if (!isAdmin()) return;
+  let j; try { j = JSON.parse(await file.text()); } catch (e) { flash('ファイルを読めませんでした。'); return; }
+  if (!j || j.kind !== 'kotobuki-migrate' || !j.stores) { flash('引っ越し用のファイルではありません。'); return; }
+  enqueue(async () => {
+    try {
+      const names = Object.keys(j.stores); let i = 0;
+      for (const s of names) {
+        const x = j.stores[s], d = emptyData();
+        for (const type of Object.keys(x.csv || {})) ingest(d, type, parseCSV(x.csv[type]));
+        flash(`移しています… ${++i}/${names.length}（${s}）`);
+        await saveStore(x.name, d, toDay(x.asOf) || todayDay(), `移しています ${i}/${names.length} ${s}`);
+      }
+      for (const s of Object.keys(j.contacts || {})) await FB.set('contacts/' + s, { p: j.contacts[s] }, true);
+      for (const s of Object.keys(j.pace || {})) await FB.set('pace/' + s, { p: j.pace[s] }, true);
+      if (j.settings) await FB.set('config/settings', Object.assign({}, DEFAULT_SETTINGS, j.settings));
+      if (Array.isArray(j.areas)) await FB.set('config/areas', { list: j.areas });
+      mergeAll(); rebuild();
+      flash(`Claude版のデータを移しました（${names.length}院）。`);
+    } catch (e) { flash('途中で止まりました。もう一度ファイルを入れてください（入れ直しても重複はしません）。'); }
+  });
+}
+
+/* ---- メンバー（使える人の登録） ---- */
+function storeChoices() {
+  if (!isAdmin()) return myStores().slice();
+  const out = [];
+  for (const a of (state.areasAll || [])) for (const x of a.stores) { const full = model.stores.find(st => shortStore(st).includes(keyOf(x))); const k = full ? shortStore(full) : x; if (!out.includes(k)) out.push(k); }
+  for (const st of model.stores) if (!out.includes(shortStore(st))) out.push(shortStore(st));
+  return out;
+}
+const areaOfShort = k => { const a = (state.areasAll || []).find(a => a.stores.some(x => keyOf(x) && k.includes(keyOf(x)))); return a ? a.name : ''; };
+function viewMembers() {
+  if (!canUpload()) return '<div class="list"><div class="empty">この画面は、エリマネと管理者だけが使えます。</div></div>';
+  const mine = myStores(), choices = storeChoices(), ed = state.memEdit || {};
+  const list = (state.members || []).map(x => Object.assign({ email: x.id }, x.data))
+    .filter(m => isAdmin() || (m.role === 'staff' && (m.stores || []).some(s => mine.includes(s))) || m.email === state.me.email)
+    .sort((a, b) => ['admin', 'am', 'staff'].indexOf(a.role) - ['admin', 'am', 'staff'].indexOf(b.role) || String((a.stores || [])[0] || '').localeCompare(String((b.stores || [])[0] || ''), 'ja') || String(a.name).localeCompare(String(b.name), 'ja'));
+  const editable = m => m.email !== state.me.email && (isAdmin() || (m.role === 'staff' && (m.stores || []).every(s => mine.includes(s))));
+  const areas = (state.areasAll || []).filter(a => isAdmin() || a.stores.some(x => mine.some(k => k.includes(keyOf(x)))));
+  const checked = new Set(ed.stores || []);
+  const roleSel = isAdmin() ? `<label>役割 <select name="role">${['staff', 'am', 'admin'].map(r => `<option value="${r}"${(ed.role || 'staff') === r ? ' selected' : ''}>${ROLE[r]}</option>`).join('')}</select></label>` : '<input type="hidden" name="role" value="staff">';
+  return `<p class="guide">このアプリを使う人を登録します。登録すると、その人に「パスワードの再設定」というメールが届きます。メールのリンクからパスワードを決めれば、ログインできるようになります。${isAdmin() ? '' : 'エリマネは、担当の院のスタッフを登録できます。'}</p>
+  <div class="grid2"><div class="card"><h2>${ed.email ? '登録を変える' : '新しく登録する'}</h2>
+    <form id="fMem" class="memform">
+      <label>名前 <input type="text" name="name" value="${esc(ed.name || '')}" placeholder="例：山田 太郎" required></label>
+      <label>メールアドレス <input type="email" name="email" value="${esc(ed.email || '')}"${ed.email ? ' readonly' : ''} required></label>
+      ${roleSel}
+      <fieldset><legend>見られる院</legend>
+        ${areas.length > 1 || isAdmin() ? `<p class="areapick">${areas.map(a => `<button type="button" class="chip" data-act="pickArea" data-a="${esc(a.name)}">${esc(a.name)}をまとめて</button>`).join('')}</p>` : ''}
+        <div class="storepick">${choices.map(k => `<label class="ck"><input type="checkbox" name="st" value="${esc(k)}"${checked.has(k) ? ' checked' : ''}>${esc(k)}${isAdmin() && areaOfShort(k) ? `<small>${esc(areaOfShort(k))}</small>` : ''}</label>`).join('') || '<span style="color:var(--sub)">選べる院がありません。</span>'}</div>
+        ${isAdmin() ? '<p class="hint">管理者は、ここで選ばなくても全部の院を見られます。</p>' : ''}
+      </fieldset>
+      <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn">${ed.email ? '変更を保存' : '登録してメールを送る'}</button>${ed.email ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
+    </form></div>
+  <div class="card"><h2>登録されている人 <small style="color:var(--sub);font-weight:400">${list.length}人</small></h2>
+    <table class="memtbl"><tbody>${list.map(m => `<tr><td><b>${esc(m.name || '')}</b><br><small>${esc(m.email)}</small></td><td><span class="role r-${esc(m.role)}">${ROLE[m.role] || esc(m.role)}</span></td>
+      <td class="st">${m.role === 'admin' ? '全部の院' : (m.stores || []).map(x => `<span class="nw">${esc(x)}</span>`).join('・') || '<span style="color:var(--sub)">なし</span>'}</td>
+      <td class="r">${editable(m) ? `<button class="lk" data-act="memEdit" data-e="${esc(m.email)}">変える</button>　<button class="lk" data-act="memMail" data-e="${esc(m.email)}">メール再送</button>　<button class="lk danger" data-act="memDel" data-e="${esc(m.email)}">削除</button>` : (m.email === state.me.email ? '<small>あなた</small>' : '')}</td></tr>`).join('')}</tbody></table>
+    <p class="hint">「削除」すると、その人はログインしてもデータを見られなくなります。</p>
+  </div></div>`;
+}
+function memberOf(email) { const x = (state.members || []).find(m => m.id === email); return x ? Object.assign({ email }, x.data) : null; }
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'fMem') return;
+  e.preventDefault();
+  const f = e.target, email = f.email.value.trim().toLowerCase(), name = f.name.value.trim(), role = isAdmin() ? f.role.value : 'staff';
+  const stores = [...f.querySelectorAll('input[name=st]:checked')].map(x => x.value);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { flash('メールアドレスの形が正しくありません。'); return; }
+  if (role !== 'admin' && !stores.length) { flash('見られる院を、1つ以上選んでください。'); return; }
+  if (email === state.me.email) { flash('自分の登録は、ここでは変えられません。'); return; }
+  const before = memberOf(email), isNew = !before;
+  const btn = f.querySelector('button.btn'); btn.disabled = true;
+  try {
+    await FB.set('members/' + email, { name, role, stores: role === 'admin' ? [] : stores, addedBy: state.me.email, addedAt: (before && before.addedAt) || new Date().toISOString(), updatedAt: new Date().toISOString() });
+    if (isNew) {
+      const created = await FB.createAccount(email, backUrl());
+      flash(created ? `${name}さんを登録して、パスワードを決めるメールを送りました。` : `${name}さんを登録しました。このメールアドレスは前から登録があったため、パスワードを決め直すメールを送りました。`);
+    } else flash(`${name}さんの登録を変えました。`);
+    state.memEdit = null; render();
+  } catch (err) { btn.disabled = false; flash(denied(err) ? '登録する権限がありません。担当の院だけを選んでいるか確認してください。' : (err && err.code && AUTH_MSG[err.code]) ? AUTH_MSG[err.code] : '登録できませんでした。もう一度お試しください。'); }
+});
+document.addEventListener('click', async e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'memEdit') { const m = memberOf(a.dataset.e); if (m) { state.memEdit = m; render(); window.scrollTo(0, 0); } }
+  else if (act === 'memCancel') { state.memEdit = null; render(); }
+  else if (act === 'pickArea') {
+    const ar = (state.areasAll || []).find(x => x.name === a.dataset.a); if (!ar) return;
+    for (const c of document.querySelectorAll('#fMem input[name=st]')) if (ar.stores.some(x => keyOf(x) && c.value.includes(keyOf(x)))) c.checked = true;
+  }
+  else if (act === 'memMail') { try { await FB.reset(a.dataset.e, backUrl()); flash(`${a.dataset.e} に、パスワードを決めるメールを送りました。`); } catch (err) { flash(authMsg(err)); } }
+  else if (act === 'memDel') {
+    const m = memberOf(a.dataset.e); if (!m) return;
+    if (!confirm(`${m.name || m.email}さんの登録を削除しますか？\nこの人は、このアプリのデータを見られなくなります。`)) return;
+    try { await FB.del('members/' + m.email); flash(`${m.name || m.email}さんの登録を削除しました。`); } catch (err) { flash('削除できませんでした。'); }
+  }
+});
+
+/* ---- 描画と操作 ---- */
+function render() {
+  const v = $('#view');
+  v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : viewSet();
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const d = el.dataset;
+  if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }
+  else if (d.area !== undefined) { state.area = d.area; state.store = ''; state.staff = ''; rememberArea(); rememberWho(); renderChrome(); render(); }
+  else if (d.store !== undefined) { state.store = d.store; state.staff = ''; rememberWho(); renderChrome(); render(); }
+  else if (d.staff !== undefined) { state.staff = d.staff; rememberWho(); renderChrome(); render(); }
+  else if (d.onlynew !== undefined) { state.onlyNew[d.ong] = d.onlynew === '1'; try { localStorage.setItem('raiin-onlynew', JSON.stringify(state.onlyNew)); } catch (err) { /* 覚えられなくても画面は動く */ } render(); }
+  else if (d.tick) toggleToday(d.pid, d.tick);
+  else if (d.ct) addContact(d.pid, d.ct);
+  else if (d.ctdel) removeContact(d.pid, d.ctdel, d.ctm);
+  else if (d.min !== undefined) { state.minDays[d.ming] = Number(d.min); try { localStorage.setItem('raiin-min', JSON.stringify(state.minDays)); } catch (err) { /* 覚えられなくても画面は動く */ } render(); }
+  else if (d.calmode) { state.calMode = d.calmode; render(); }
+  else if (d.month) { state.month = d.month; render(); }
+  else if (d.pace !== undefined) savePace(d.pid, Number(d.pace));
+  else if (d.id) openPatient(d.id);
+  else if (d.act === 'close') { $('#dlg').close(); state.openId = null; }
+  else if (d.act === 'undo') { const u = state.undo; state.undo = null; if (u) u(); }
+  else if (d.act === 'saveAreas') {
+    const list = parseAreas($('#areasText').value);
+    state.areas = list; rebuild(); render();
+    state.areasAll = list;
+    enqueue(() => FB.set('config/areas', { list }).then(() => flash('エリアを保存しました。'), () => flash('エリアを保存できませんでした。管理者のアカウントか確認してください。')));
+  }
+  else if (d.act === 'resetSet') { state.settings = Object.assign({}, DEFAULT_SETTINGS, { startDay: state.settings.startDay }); saveSettings(); rebuild(); render(); }
+});
+$('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.close(); state.openId = null; } });
+$('#dlg').addEventListener('close', () => { state.openId = null; });
+document.addEventListener('keydown', e => { // 一覧の行はキーボードでも開ける
+  const r = e.target; if ((e.key === 'Enter' || e.key === ' ') && r.matches && r.matches('.lrow[data-id][role=button]')) { e.preventDefault(); openPatient(r.dataset.id); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'file') { if (t.files.length) loadFiles([...t.files]); }
+  else if (t.id === 'mig') { if (t.files.length) importMigration(t.files[0]); }
+  else if (t.id === 'asOf') { const d = toDay(t.value); if (d !== null && canUpload()) {
+    const targets = Object.keys(storeData).filter(s => canUploadStore(storeData[s].name));
+    for (const s of targets) storeData[s].asOf = d;
+    mergeAll(); rebuild();
+    enqueue(() => Promise.all(targets.map(s => FB.set('stores/' + s, { asOf: dayISO(d) }, true))).then(() => flash('基準日を保存しました。'), () => flash('保存できませんでした。'))); } }
+  else if (t.id === 'startDay') { state.settings.startDay = t.value || ''; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); }
+  else if (t.dataset.set) {
+    const v = Math.round(Number(t.value));
+    if (Number.isFinite(v) && v >= Number(t.min) && v <= Number(t.max)) { state.settings[t.dataset.set] = v; t.value = v; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); } // 入力中の欄を作り直さないよう、ここでは再描画しない
+    else t.value = state.settings[t.dataset.set];
+  }
+});
+document.addEventListener('dragover', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) { e.preventDefault(); z.classList.add('on'); } });
+document.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) z.classList.remove('on'); });
+document.addEventListener('drop', e => {
+  const z = e.target.closest && e.target.closest('#drop'); if (!z) return;
+  e.preventDefault(); z.classList.remove('on');
+  if (e.dataTransfer && e.dataTransfer.files.length) loadFiles([...e.dataTransfer.files]);
+});
+document.addEventListener('toggle', e => { const g = e.target.dataset && e.target.dataset.g; if (g) state.open[g] = e.target.open; }, true);
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (state.tab === 'cal') render(); }, 150); });
+
+boot();
+
+</script>
+<script type="module">
+/* Firebase（ログインとデータの保管庫）につなぐ部分 */
+import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, reload, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const config = {
+  apiKey: 'AIzaSyBNRE_j2xdt_q-YIwL66HJvgbJOuPAo5ZQ',
+  authDomain: 'kotobuki-app.firebaseapp.com',
+  projectId: 'kotobuki-app',
+  storageBucket: 'kotobuki-app.firebasestorage.app',
+  messagingSenderId: '327372910313',
+  appId: '1:327372910313:web:0ebec52bf9722bea044a78',
+};
+const app = initializeApp(config);
+const auth = getAuth(app); auth.languageCode = 'ja';
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+const fs = getFirestore(app);
+const ref = p => doc(fs, ...p.split('/'));
+const col = p => collection(fs, ...p.split('/'));
+const back = url => (url ? { url } : undefined);
+const randomPw = () => { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, b => b.toString(36).padStart(2, '0')).join('') + 'Aa1!'; };
+
+window.fbReady(Object.freeze({
+  auth,
+  onAuth: cb => onAuthStateChanged(auth, cb),
+  signIn: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
+  signOut: () => signOut(auth),
+  reset: (email, url) => sendPasswordResetEmail(auth, email, back(url)),
+  signUp: async (email, pw, url) => { const c = await createUserWithEmailAndPassword(auth, email, pw); await sendEmailVerification(c.user, back(url)); return c.user; },
+  resendVerify: url => sendEmailVerification(auth.currentUser, back(url)),
+  refresh: async () => { await reload(auth.currentUser); await auth.currentUser.getIdToken(true); return auth.currentUser; },
+  /* 別の人のアカウントを作る。自分のログインが切り替わらないよう、別の接続で作ってすぐ閉じる */
+  createAccount: async (email, url) => {
+    const a2 = initializeApp(config, 'add-' + Date.now()), au2 = getAuth(a2);
+    let created = true;
+    try { await createUserWithEmailAndPassword(au2, email, randomPw()); }
+    catch (e) { if (e.code !== 'auth/email-already-in-use') { await deleteApp(a2).catch(() => {}); throw e; } created = false; }
+    await signOut(au2).catch(() => {}); await deleteApp(a2).catch(() => {});
+    await sendPasswordResetEmail(auth, email, back(url));
+    return created;
+  },
+  get: async p => { const s = await getDoc(ref(p)); return s.exists() ? s.data() : null; },
+  set: (p, d, merge) => (merge ? setDoc(ref(p), d, { merge: true }) : setDoc(ref(p), d)),
+  del: p => deleteDoc(ref(p)),
+  watch: (p, cb, err) => onSnapshot(ref(p), s => cb(s.exists() ? s.data() : null, s.metadata.hasPendingWrites), err),
+  watchList: (p, cb, err) => onSnapshot(col(p), s => cb(s.docs.map(d => ({ id: d.id, data: d.data() }))), err),
+  list: async p => (await getDocs(col(p))).docs.map(d => ({ id: d.id, data: d.data() })),
+}));
+</script>
+</body>
+</html>

@@ -463,6 +463,10 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
     itemsByAcct.get(it.acct).push(it);
   }
 
+  /* 読み込んだ順番で結果が変わらないよう、同じ日の予約や明細はIDの順にそろえる */
+  const byId = (a, b) => (Number(a.id) - Number(b.id)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  for (const l of acctByRes.values()) l.sort((a, b) => (Number(a) - Number(b)) || (a < b ? -1 : a > b ? 1 : 0));
+  for (const l of itemsByAcct.values()) l.sort(byId);
   const byCust = new Map();
   let dataStart = Infinity, dataEnd = -Infinity;
   for (const r of data.res.values()) {
@@ -476,7 +480,10 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
   const everyone = startDay === null || startDay < dataStart; // 開始日が空か、データより前の日付なら、購入日が分からない人も対象
   const patients = [];
   for (const [cid, rows] of byCust) {
-    const asOfP = asOfByStore[rows[0].store] !== undefined ? asOfByStore[rows[0].store] : asOf; // 院ごとに、CSVを読み込んだ日で判定する
+    rows.sort((a, b) => (a.day - b.day) || byId(a, b));
+    const lastValid = rows.filter(r => !r.deleted).pop() || rows[rows.length - 1];
+    const home = lastValid.store; // 院は、いちばん新しい予約（キャンセル以外）の院。転院した人は新しい院に入る
+    const asOfP = asOfByStore[home] !== undefined ? asOfByStore[home] : asOf; // 院ごとに、CSVを読み込んだ日で判定する
     const days = new Map();
     for (const r of rows) {
       if (!days.has(r.day)) days.set(r.day, { valid: [], deleted: [] });
@@ -581,8 +588,8 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
     const gaps = []; for (let i = 1; i < visitDays.length; i++) gaps.push(visitDays[i] - visitDays[i - 1]);
 
     const p = {
-      id: cid, asOf: asOfP, name: (data.cust.get(cid) || {}).name || '', staff: last ? last.staff : (rows[0].staff || '担当なし'),
-      store: rows[0].store, visits, cancels, futures, tickets, tk, last, booking, cancelledNext, gaps,
+      id: cid, asOf: asOfP, name: (data.cust.get(cid) || {}).name || '', staff: last ? last.staff : (lastValid.staff || '担当なし'),
+      store: home, visits, cancels, futures, tickets, tk, last, booking, cancelledNext, gaps,
       isTicket: !!tk, isNew: visits.some(v => v.isNew),
       used: null, seen: 0, remaining: null, target: null, limit: null, overdue: null, plan: [], endDay: null,
       status: 'none', renewSoon: false,
@@ -679,7 +686,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-3';
+const APP_VER = '10/14-4';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1500,6 +1507,7 @@ function viewSet() {
   <div class="card" style="grid-column:1/-1"><h2>判定のしかた</h2>
     <ul class="plain">
       <li>同じ日の予約（回数券の施術とVIP施術など）は1回の来院として数えます。削除済みの予約はキャンセルとして扱います。</li>
+      <li>いくつかの院に通ったことがある患者さんは、いちばん新しい予約の院に入れています。</li>
       <li>何回目かは、回数券の購入日からの「回数券消化」を数えています。同じ日に同じ回数券を2枚買った場合は合算します（R15が2枚ならR30）。</li>
       <li>「口コミ施術」「VIP施術」「都度」「次回支払い未定」は、来院としては数えますが、回数券の回数には入れません。「0.5回分」は0.5回として数えます。</li>
       <li>回数券が残っているあいだに同じ券種の購入が記録された場合は、分割払いの2回目以降とみなして、新しい回数券としては数えません。</li>

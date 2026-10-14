@@ -279,6 +279,8 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
   .cal{width:calc(50% - 9px);min-width:150px}
 }
 @media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
+.cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
+.cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
 .top .me{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px}
 .top .me span{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3} .top .me small{color:var(--sub)}
 .btn.sm{min-height:32px;padding:4px 12px;font-size:13px}
@@ -843,13 +845,13 @@ function addContact(id, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
   const d = dayISO(todayDay()), list = contactsOf(p);
   if (list.some(c => c.d === d && c.m === m)) { flash('今日の' + (METHOD[m] || m) + 'は、もう記録してあります。'); return; }
-  saveContacts(p, list.concat([{ d, m }]));
+  saveContacts(p, list.concat([{ d, m, s: p.status }]));
 }
 /* 一覧のチェック：今日の記録をつける／もう一度押すと取り消す。日を変えれば何度でも記録できる */
 function toggleToday(id, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
   const d = dayISO(todayDay()), before = contactsOf(p), on = before.some(c => c.d === d && c.m === m);
-  const next = on ? before.filter(c => !(c.d === d && c.m === m)) : before.concat([{ d, m }]);
+  const next = on ? before.filter(c => !(c.d === d && c.m === m)) : before.concat([{ d, m, s: p.status }]);
   saveContacts(p, next, `${pname(p)}さん：${METHOD[m]}を${on ? '取り消しました' : '記録しました'}`, () => saveContacts(p, before, '元に戻しました。'));
 }
 function removeContact(id, d, m) {
@@ -1248,21 +1250,38 @@ function ctBadge(p) {
   return ` <span class="ct${back ? ' back' : ''}">${METHOD[c.m] || esc(c.m)} ${md(toDay(c.d))}${back ? ' → 来院あり' : ' 送信済み'}</span>`;
 }
 /* LINE・手紙の結果：直近90日に送った記録と、そのあとの来院 */
+/* 送ったときの状況：これからの記録は送った時点の状況を残す。前からの記録は、来院データからさかのぼって推定する */
+const CT_GROUPS = [['cancelled', 'キャンセルしたまま'], ['nobook', '次回予約なし'], ['away', 'しばらく来ていない'], ['other', 'その他']];
+const ctGroup = s => (s === 'cancelled' || s === 'nobook' || s === 'away' ? s : 'other');
+function statusAt(p, c) {
+  if (c.s) return ctGroup(c.s);
+  const d = toDay(c.d), before = p.visits.filter(v => v.day <= d);
+  if (!before.length) return 'other';
+  const lv = before[before.length - 1].day;
+  if (d - lv >= model.settings.awayDays) return 'away';
+  if ((p.cancels || []).some(x => x > lv && x <= d + 14)) return 'cancelled';
+  return 'nobook';
+}
+const CT_WINDOW = 30; // 送ってから何日以内の来院を「戻った」に数えるか
+/* 戻った：送ってから30日以内に来院した、または次の予約が入っている */
+const cameBack = (p, c) => { const d = toDay(c.d); return p.visits.some(v => v.day > d && v.day <= d + CT_WINDOW) || !!(p.booking && p.booking.day > d); };
+const waiting = (p, c) => !cameBack(p, c) && model.asOf - toDay(c.d) < CT_WINDOW;
 function contactTable() {
-  const ps = visible(), byKey = new Map(), cut = model.asOf - 90;
-  for (const p of ps) for (const c of contactsOf(p)) {
-    if (toDay(c.d) < cut) continue;
-    const k = state.single ? p.staff : shortStore(p.store);
-    if (!byKey.has(k)) byKey.set(k, { line: 0, letter: 0, all: 0, back: 0 });
-    const r = byKey.get(k); r.all++; if (c.m === 'line') r.line++; else if (c.m === 'letter') r.letter++; if (cameAfter(p, c)) r.back++;
-  }
-  if (!byKey.size) return '';
-  const tot = { line: 0, letter: 0, all: 0, back: 0 }; for (const r of byKey.values()) for (const k in tot) tot[k] += r[k];
-  const pct = r => (r.all ? Math.round(r.back / r.all * 100) + '%' : '—');
-  const line = (name, r) => `<tr><td>${name}</td><td class="r">${r.line}</td><td class="r">${r.letter}</td><td class="r">${r.all}</td><td class="r"><b>${r.back}</b></td><td class="r">${pct(r)}</td></tr>`;
-  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>直近90日に送った記録と、そのあと来院があった件数です。来院はCSVを入れると反映されます。</p>
-    <div style="overflow-x:auto"><table><tr><th>${state.single ? '担当' : '院'}</th><th class="r">LINE</th><th class="r">手紙</th><th class="r">合計</th><th class="r">そのあと来院</th><th class="r">来院した割合</th></tr>
-    ${[...byKey.entries()].sort((a, b) => b[1].all - a[1].all).map(([k, r]) => line(esc(k), r)).join('')}${byKey.size > 1 ? line('<b>合計</b>', tot) : ''}</table></div></div>`;
+  const ps = visible(), cut = model.asOf - 90, recs = [];
+  for (const p of ps) for (const c of contactsOf(p)) if (toDay(c.d) >= cut) recs.push({ p, c, g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' });
+  if (!recs.length) return '';
+  const cell = l => { const n = l.length, b = l.filter(r => r.back).length; return n ? `<b>${b}</b>/${n}人<small class="pct">${Math.round(b / n * 100)}%</small>` : '<span style="color:var(--sub)">—</span>'; };
+  const row = (name, l) => `<tr><td>${name}</td><td class="r">${cell(l.filter(r => r.m === 'line'))}</td><td class="r">${cell(l.filter(r => r.m === 'letter'))}</td><td class="r">${cell(l)}</td></tr>`;
+  const head = first => `<tr><th>${first}</th><th class="r">LINE</th><th class="r">手紙</th><th class="r">合計</th></tr>`;
+  const groups = CT_GROUPS.filter(([k]) => recs.some(r => r.g === k));
+  const byKey = new Map(); for (const r of recs) { const k = state.single ? r.p.staff : shortStore(r.p.store); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(r); }
+  const nWait = recs.filter(r => r.wait).length;
+  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>直近90日に送った記録のうち、<b>戻った人／送った人</b>です。「戻った」は、送ってから${CT_WINDOW}日以内に来院したか、次の予約が入った人です。来院と予約はCSVを入れると反映されます。</p>
+    <h3 class="cth">送ったときの状況ごと</h3>
+    <div style="overflow-x:auto"><table class="cttbl">${head('状況')}${groups.map(([k, n]) => row(n, recs.filter(r => r.g === k))).join('')}${groups.length > 1 ? row('<b>合計</b>', recs) : ''}</table></div>
+    ${byKey.size ? `<h3 class="cth">${state.single ? '担当ごと' : '院ごと'}</h3>
+    <div style="overflow-x:auto"><table class="cttbl">${head(state.single ? '担当' : '院')}${[...byKey.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(esc(k), l)).join('')}${byKey.size > 1 ? row('<b>合計</b>', recs) : ''}</table></div>` : ''}
+    <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWait ? `送ってから${CT_WINDOW}日たっていない ${nWait}件は、まだ結果待ちです（戻っていない人に数えています）。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
 }
 function viewFollow() {
   const all = scoped();

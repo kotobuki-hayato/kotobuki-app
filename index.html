@@ -286,6 +286,9 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
 @media (max-width:700px){ .rbars .brow{grid-template-columns:72px 1fr 40px 0 84px} .rbars .brow span:nth-child(4){display:none} .calls .crow{flex-wrap:wrap} }
+.nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+.sumtbl th.sub,.sumtbl td.sub{font-size:13px} .sumtbl th.sub{color:var(--sub);font-weight:400} .sumtbl th.grp,.sumtbl td.grp{border-left:2px solid var(--line)} .sumtbl td.sub:last-of-type{} 
+#dlg .back{display:block;margin:0 0 6px;font-size:14px}
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -695,7 +698,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-10';
+const APP_VER = '10/14-11';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1225,20 +1228,47 @@ function critHTML() {
 /* ---- 患者さん一覧 ---- */
 const MIN_CHOICES = [0, 7, 14, 21, 30, 45];
 state.minDays = {}; try { const m = JSON.parse(localStorage.getItem('raiin-min') || '{}'); if (m && typeof m === 'object') for (const k of ['nobook', 'cancelled']) if (MIN_CHOICES.includes(m[k])) state.minDays[k] = m[k]; } catch (e) { /* 覚えていなくても「すべて」から始まるだけ */ }
-const KS = ['cancelled', 'nobook', 'late', 'ok', 'ended', 'away'];
+/* まとめの表：予約が入っていない人（キャンセルしたまま・次回予約なし・しばらく来ていない）は1つにまとめ、最後の来院からの日数で分ける */
+const noBook = p => ['cancelled', 'nobook'].includes(p.status) || (p.status === 'away' && p.was !== 'ended');
+const endedLike = p => p.status === 'ended' || (p.status === 'away' && p.was === 'ended');
+const sinceLast = p => p.asOf - p.last.day;
+const NB_BINS = [[14, 21, '2週間〜'], [21, 30, '3週間〜'], [30, 60, '1か月〜'], [60, Infinity, '2か月〜']];
+const SUM_COLS = [
+  { h: '予約なし', t: '予約が入っていない人', f: noBook, cls: 's-nobook', grp: 'nb' },
+  ...NB_BINS.map(([a, b, l]) => ({ h: l, t: `予約なしで、最後の来院から${l.replace('〜', '')}以上${b === Infinity ? '' : `（${b === 21 ? '3週間' : b === 30 ? '1か月' : '2か月'}未満）`}`, f: p => noBook(p) && sinceLast(p) >= a && sinceLast(p) < b, cls: 's-nobook', sub: true })),
+  { h: '間隔が空きすぎ', t: '予約はあるが、間隔が空きすぎの人', f: p => p.status === 'late', cls: 's-late' },
+  { h: '順調', t: '順調な人', f: p => p.status === 'ok', cls: 's-ok' },
+  { h: '更新せず終了', t: '回数券が終了して、更新していない人', f: endedLike, cls: 's-ended' },
+];
+let plists = []; // 人数を押したときに出す一覧
+const plistBtn = (n, cls, title, ps) => { if (!n) return '<span style="color:var(--sub)">0</span>'; plists.push({ title, ps }); return `<button class="n ${cls} nbtn" data-plist="${plists.length - 1}" title="患者さんを見る">${n}</button>`; };
 function sumTable(title, desc, first, extra, rows, total) {
-  const cells = ps => KS.map(k => { const n = ps.filter(p => p.status === k).length; return `<td class="r">${n ? `<span class="n s-${k}">${n}</span>` : '<span style="color:var(--sub)">0</span>'}</td>`; }).join('');
-  const line = r => `<tr><td>${r.cell}</td>${extra ? `<td>${r.extra || ''}</td>` : ''}${r.nodata ? `<td class="r" colspan="${KS.length + 2}" style="color:var(--sub)">まだCSVが読み込まれていません</td>` : `<td class="r">${r.ps.length}</td><td class="r"><b>${r.ps.filter(p => ATTN.includes(p.status)).length}</b></td>${cells(r.ps)}`}</tr>`;
-  return `<div class="card sum"><h2>${title}</h2><p>${desc}</p>
-    <div style="overflow-x:auto"><table><tr><th>${first}</th>${extra ? `<th>${extra}</th>` : ''}<th class="r">回数券の患者さん</th><th class="r">要フォロー</th>${KS.map(k => `<th class="r">${LABEL[k]}</th>`).join('')}</tr>
-    ${rows.map(line).join('')}${total ? line({ cell: '<b>合計</b>', ps: total }) : ''}</table></div></div>`;
+  const line = r => {
+    if (r.nodata) return `<tr><td>${r.cell}</td>${extra ? `<td>${r.extra || ''}</td>` : ''}<td class="r" colspan="${SUM_COLS.length + 2}" style="color:var(--sub)">まだCSVが読み込まれていません</td></tr>`;
+    const who = r.label || '';
+    const attn = r.ps.filter(p => ATTN.includes(p.status));
+    return `<tr><td>${r.cell}</td>${extra ? `<td>${r.extra || ''}</td>` : ''}<td class="r">${plistBtn(r.ps.length, 'plain', `${who}回数券の患者さん`, r.ps)}</td><td class="r"><b>${plistBtn(attn.length, 'plain', `${who}要フォローの患者さん`, attn)}</b></td>` +
+      SUM_COLS.map(c => { const ps = r.ps.filter(c.f); return `<td class="r${c.sub ? ' sub' : ''}${c.grp ? ' grp' : ''}">${plistBtn(ps.length, c.cls, `${who}${c.t}`, ps)}</td>`; }).join('') + '</tr>';
+  };
+  return `<div class="card sum"><h2>${title}</h2><p>${desc}人数を押すと、その患者さんの一覧が出ます。</p>
+    <div style="overflow-x:auto"><table class="sumtbl"><tr><th>${first}</th>${extra ? `<th>${extra}</th>` : ''}<th class="r">回数券の患者さん</th><th class="r">要フォロー</th>${SUM_COLS.map(c => `<th class="r${c.sub ? ' sub' : ''}${c.grp ? ' grp' : ''}">${c.h}</th>`).join('')}</tr>
+    ${rows.map(line).join('')}${total ? line({ cell: '<b>合計</b>', ps: total }) : ''}</table></div>
+    <p class="note" style="margin-top:6px">「予約なし」は、キャンセルしたまま・次回予約なし・しばらく来ていない人をまとめた人数です。その右の4つは、そのうち最後の来院から2週間以上たっている人を、日数で分けたものです（2週間未満の人は「予約なし」だけに入ります）。</p></div>`;
+}
+function openList(i) {
+  const x = plists[i]; if (!x) return;
+  state.fromList = i; state.openId = null;
+  const ps = x.ps.slice().sort(sorter);
+  $('#dlg').innerHTML = `<div class="dh"><div><h2 id="dlgTitle">${esc(x.title)}</h2><small>${ps.length}人。名前を押すと、その人の詳しい内容が開きます。</small></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
+    <div class="db"><div class="mini">${ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(ticketText(p))} <small>${LABEL[p.status]}・最後の来院 ${md(p.last.day)}（${sinceLast(p)}日前）</small></span></button>`).join('')}</div></div>`;
+  const dlg = $('#dlg'); if (!dlg.open) dlg.showModal(); dlg.scrollTop = 0;
 }
 function areaTable() {
   const all = model.patients.filter(p => p.last && p.tracked), names = state.areas.map(a => a.name);
   if (model.stores.some(s => !areaOf(s))) names.push(NO_AREA);
   const rows = names.map(n => {
     const wd = model.stores.filter(s => inArea(s, n)), conf = (state.areas.find(a => a.name === n) || { stores: wd }).stores.length;
-    return { cell: `<button class="lk" data-area="${esc(n)}">${esc(n)}</button>`, extra: `${wd.length}/${Math.max(conf, wd.length)}院`, ps: all.filter(p => inArea(p.store, n)), nodata: !wd.length };
+    return { cell: `<button class="lk" data-area="${esc(n)}">${esc(n)}</button>`, label: n + 'の', extra: `${wd.length}/${Math.max(conf, wd.length)}院`, ps: all.filter(p => inArea(p.store, n)), nodata: !wd.length };
   });
   return sumTable('エリア別のまとめ', 'エリア名を押すと、そのエリアだけに切り替わります。「データあり」は、CSVが読み込まれている院の数です。', 'エリア', 'データあり', rows, all);
 }
@@ -1247,16 +1277,17 @@ function storeTable() {
   const rows = state.storeList.map(x => {
     if (!x.has) return { cell: esc(x.short), nodata: true };
     const d = storeAsOf(x.full), old = today - d >= 3;
-    return { cell: `<button class="lk" data-store="${esc(x.full)}">${esc(x.short)}</button>`, extra: old ? `<span class="n s-late">${md(d)}</span>` : md(d), ps: all.filter(p => p.store === x.full) };
+    return { cell: `<button class="lk" data-store="${esc(x.full)}">${esc(x.short)}</button>`, label: x.short + 'の', extra: old ? `<span class="n s-late">${md(d)}</span>` : md(d), ps: all.filter(p => p.store === x.full) };
   });
   return sumTable('院別のまとめ', '院名を押すと、その院だけに切り替わります。「データの日付」は、その院のCSVを最後に読み込んだ日です。', '院', 'データの日付', rows, all);
 }
 function staffTable() {
   const tk = visible().filter(p => p.isTicket);
   const staffs = [...new Set(tk.map(p => p.staff))].sort((a, b) => tk.filter(p => p.staff === b).length - tk.filter(p => p.staff === a).length);
+  if (state.staff) return sumTable(`${esc(state.staff)}さんのまとめ`, '担当している回数券の患者さんの人数です。', '担当', '', [{ cell: esc(state.staff), label: state.staff + 'さんの', ps: tk.filter(p => p.staff === state.staff) }]);
   if (staffs.length < 2) return '';
   return sumTable(`${state.storeList.length || state.areas.length ? esc(shortStore(state.single)) + 'の' : ''}スタッフ別のまとめ`, '担当している回数券の患者さんの人数です。名前を押すと、そのスタッフの患者さんだけに切り替わります。', '担当', '',
-    staffs.map(s => ({ cell: `<button class="lk" data-staff="${esc(s)}">${esc(s)}</button>`, ps: tk.filter(p => p.staff === s) })), tk);
+    staffs.map(s => ({ cell: `<button class="lk" data-staff="${esc(s)}">${esc(s)}</button>`, label: s + 'さんの', ps: tk.filter(p => p.staff === s) })), tk);
 }
 const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者さん</span><span>回数券</span><span>最後の来院</span><span>次回予約</span><span>状況</span>${ct ? '<span class="acth">今日送った</span>' : ''}</div>`;
 function rowHTML(p, ct) {
@@ -1330,8 +1361,8 @@ function viewFollow() {
   if (!state.staff) {
     if (state.areas.length && !state.area && !state.store) h += areaTable();
     else if (state.storeList.length && !state.store) h += storeTable();
-    if (state.single) h += staffTable();
   }
+  if (state.single) h += staffTable(); // 担当者を選んでいるときは、その人だけのまとめ
   h += contactTable();
   if (!all.length) return h + emptyHTML();
   for (const g of GROUPS) {
@@ -1652,7 +1683,7 @@ function openPatient(id, keep) {
         : '<p class="note" style="margin-top:8px">まだ記録がありません。送ったらボタンを押してください。今日の日付で残ります。</p>'}
       ${state.canWrite ? '' : '<p class="note">このアカウントは「見るだけ」の権限なので、記録できません。</p>'}`;
   }
-  $('#dlg').innerHTML = `<div class="dh"><div><h2 id="dlgTitle">${esc(pname(p))}</h2><small>${p.name ? '顧客ID ' + esc(p.id) + '　' : ''}${esc(tanto(p))}</small><small>${esc(tline)}</small></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
+  $('#dlg').innerHTML = `${state.fromList !== null && state.fromList !== undefined && plists[state.fromList] ? '<button class="lk back" data-act="backList">← 一覧に戻る</button>' : ''}<div class="dh"><div><h2 id="dlgTitle">${esc(pname(p))}</h2><small>${p.name ? '顧客ID ' + esc(p.id) + '　' : ''}${esc(tanto(p))}</small><small>${esc(tline)}</small></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
     <div class="db"><div class="say s-${p.status}"><b>${LABEL[p.status]}</b>　${esc(detail(p))}</div>
     ${ctHTML}${paceHTML}<h3>カレンダー</h3>${calendarsHTML(p)}
     <div class="cols2"><div><h3>来院の記録</h3><table><tr><th>日付</th><th>内容</th><th class="r">前回から</th></tr>${hist}</table></div>
@@ -1825,14 +1856,15 @@ function keepMemDraft() {
 /* ---- 描画と操作 ---- */
 function render() {
   const v = $('#view');
-  if (state.tab === 'mem') { const ae = document.activeElement, keep = ae && ae.closest && ae.closest('#fMem') ? { n: ae.name, s: ae.selectionStart } : null; keepMemDraft(); state.memFocus = keep; }
+  if (state.tab === 'mem') { const ae = document.activeElement, keep = ae && ae.closest && ae.closest('#fMem') ? { n: ae.name, s: ae.selectionStart } : null; keepMemDraft(); state.memFocus = keep; } plists = [];
   v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : viewSet();
   if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.call) toggleCall(d.call);
+  if (d.plist !== undefined) openList(Number(d.plist));
+  else if (d.call) toggleCall(d.call);
   else if (d.ctmonth) { state.ctMonth = d.ctmonth; render(); }
   else if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }
   else if (d.area !== undefined) { state.area = d.area; state.store = ''; state.staff = ''; rememberArea(); rememberWho(); renderChrome(); render(); }
@@ -1847,7 +1879,8 @@ document.addEventListener('click', e => {
   else if (d.month) { state.month = d.month; render(); }
   else if (d.pace !== undefined) savePace(d.pid, Number(d.pace));
   else if (d.id) openPatient(d.id);
-  else if (d.act === 'close') { $('#dlg').close(); state.openId = null; }
+  else if (d.act === 'close') { $('#dlg').close(); state.openId = null; state.fromList = null; }
+  else if (d.act === 'backList') { openList(state.fromList); }
   else if (d.act === 'undo') { const u = state.undo; state.undo = null; if (u) u(); }
   else if (d.act === 'saveAreas') {
     const list = parseAreas($('#areasText').value);
@@ -1858,7 +1891,7 @@ document.addEventListener('click', e => {
   else if (d.act === 'resetSet') { state.settings = Object.assign({}, DEFAULT_SETTINGS, { startDay: state.settings.startDay, renewRate: state.settings.renewRate, prices: state.settings.prices }); saveSettings(); rebuild(); render(); }
 });
 $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.close(); state.openId = null; } });
-$('#dlg').addEventListener('close', () => { state.openId = null; });
+$('#dlg').addEventListener('close', () => { state.openId = null; state.fromList = null; });
 document.addEventListener('keydown', e => { // 一覧の行はキーボードでも開ける
   const r = e.target; if ((e.key === 'Enter' || e.key === ' ') && r.matches && r.matches('.lrow[data-id][role=button]')) { e.preventDefault(); openPatient(r.dataset.id); }
 });

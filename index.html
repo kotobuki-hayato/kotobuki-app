@@ -279,6 +279,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
   .cal{width:calc(50% - 9px);min-width:150px}
 }
 @media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
+.ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
 .top .me{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px}
@@ -686,7 +687,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-4';
+const APP_VER = '10/14-5';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1277,22 +1278,31 @@ const CT_WINDOW = 30; // 送ってから何日以内の来院を「戻った」�
 /* 戻った：送ってから30日以内に来院した、または次の予約が入っている */
 const cameBack = (p, c) => { const d = toDay(c.d); return p.visits.some(v => v.day > d && v.day <= d + CT_WINDOW) || !!(p.booking && p.booking.day > d); };
 const waiting = (p, c) => !cameBack(p, c) && model.asOf - toDay(c.d) < CT_WINDOW;
+const ymOf = d => dayISO(d).slice(0, 7); // 'YYYY-MM'
+const ymLabel = ym => `${+ym.slice(0, 4)}年${+ym.slice(5)}月`;
 function contactTable() {
-  const ps = visible(), cut = model.asOf - 90, recs = [];
-  for (const p of ps) for (const c of contactsOf(p)) if (toDay(c.d) >= cut) recs.push({ p, c, g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' });
+  const ps = visible(), recs = [];
+  for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d); recs.push({ p, c, ym: ymOf(d), g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
   if (!recs.length) return '';
+  const months = [...new Set(recs.map(r => r.ym))].sort().reverse();
+  if (!state.ctMonth || !months.includes(state.ctMonth)) state.ctMonth = months[0];
+  const sel = recs.filter(r => r.ym === state.ctMonth);
   const cell = l => { const n = l.length, b = l.filter(r => r.back).length; return n ? `<b>${b}</b>/${n}人<small class="pct">${Math.round(b / n * 100)}%</small>` : '<span style="color:var(--sub)">—</span>'; };
   const row = (name, l) => `<tr><td>${name}</td><td class="r">${cell(l.filter(r => r.m === 'line'))}</td><td class="r">${cell(l.filter(r => r.m === 'letter'))}</td><td class="r">${cell(l)}</td></tr>`;
   const head = first => `<tr><th>${first}</th><th class="r">LINE</th><th class="r">手紙</th><th class="r">合計</th></tr>`;
-  const groups = CT_GROUPS.filter(([k]) => recs.some(r => r.g === k));
-  const byKey = new Map(); for (const r of recs) { const k = state.single ? r.p.staff : shortStore(r.p.store); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(r); }
-  const nWait = recs.filter(r => r.wait).length;
-  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>直近90日に送った記録のうち、<b>戻った人／送った人</b>です。「戻った」は、送ってから${CT_WINDOW}日以内に来院したか、次の予約が入った人です。来院と予約はCSVを入れると反映されます。</p>
-    <h3 class="cth">送ったときの状況ごと</h3>
-    <div style="overflow-x:auto"><table class="cttbl">${head('状況')}${groups.map(([k, n]) => row(n, recs.filter(r => r.g === k))).join('')}${groups.length > 1 ? row('<b>合計</b>', recs) : ''}</table></div>
-    ${byKey.size ? `<h3 class="cth">${state.single ? '担当ごと' : '院ごと'}</h3>
-    <div style="overflow-x:auto"><table class="cttbl">${head(state.single ? '担当' : '院')}${[...byKey.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(esc(k), l)).join('')}${byKey.size > 1 ? row('<b>合計</b>', recs) : ''}</table></div>` : ''}
-    <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWait ? `送ってから${CT_WINDOW}日たっていない ${nWait}件は、まだ結果待ちです（戻っていない人に数えています）。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
+  const groups = CT_GROUPS.filter(([k]) => sel.some(r => r.g === k));
+  const byKey = new Map(); for (const r of sel) { const k = state.single ? r.p.staff : shortStore(r.p.store); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(r); }
+  const nWait = sel.filter(r => r.wait).length, nWaitAll = recs.filter(r => r.wait).length;
+  const shown = months.slice(0, 12);
+  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>送った月ごとに、<b>戻った人／送った人</b>を数えています。「戻った」は、送ってから${CT_WINDOW}日以内に来院したか、次の予約が入った人です。来院と予約はCSVを入れると反映されます。</p>
+    <h3 class="cth">月ごと</h3>
+    <div style="overflow-x:auto"><table class="cttbl">${head('送った月')}${shown.map(ym => row(`<button class="lk" data-ctmonth="${ym}">${ymLabel(ym)}</button>${recs.some(r => r.ym === ym && r.wait) ? ' <small style="color:var(--sub)">結果待ちあり</small>' : ''}`, recs.filter(r => r.ym === ym))).join('')}${shown.length > 1 ? row('<b>合計</b>', recs.filter(r => shown.includes(r.ym))) : ''}</table></div>
+    <div class="ctmonths" role="group" aria-label="内訳を見る月">${shown.map(ym => `<button class="chip" data-ctmonth="${ym}" aria-pressed="${ym === state.ctMonth}">${ymLabel(ym)}</button>`).join('')}</div>
+    <h3 class="cth">${ymLabel(state.ctMonth)}　送ったときの状況ごと</h3>
+    <div style="overflow-x:auto"><table class="cttbl">${head('状況')}${groups.map(([k, n]) => row(n, sel.filter(r => r.g === k))).join('')}${groups.length > 1 ? row('<b>合計</b>', sel) : ''}</table></div>
+    <h3 class="cth">${ymLabel(state.ctMonth)}　${state.single ? '担当ごと' : '院ごと'}</h3>
+    <div style="overflow-x:auto"><table class="cttbl">${head(state.single ? '担当' : '院')}${[...byKey.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(esc(k), l)).join('')}${byKey.size > 1 ? row('<b>合計</b>', sel) : ''}</table></div>
+    <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWaitAll ? `送ってから${CT_WINDOW}日たっていない記録は「結果待ち」で、まだ戻っていない人に数えています（${ymLabel(state.ctMonth)}は${nWait}件）。月の数字は、${CT_WINDOW}日たつまで増えることがあります。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
 }
 function viewFollow() {
   const all = scoped();
@@ -1777,9 +1787,10 @@ function render() {
   v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : viewSet();
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }
+  if (d.ctmonth) { state.ctMonth = d.ctmonth; render(); }
+  else if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }
   else if (d.area !== undefined) { state.area = d.area; state.store = ''; state.staff = ''; rememberArea(); rememberWho(); renderChrome(); render(); }
   else if (d.store !== undefined) { state.store = d.store; state.staff = ''; rememberWho(); renderChrome(); render(); }
   else if (d.staff !== undefined) { state.staff = d.staff; rememberWho(); renderChrome(); render(); }

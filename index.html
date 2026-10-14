@@ -1642,6 +1642,7 @@ async function loadFiles(files) {
     else if (type === '顧客') { const i = ix('顧客ID'); for (const r of t.rows) { const ss = custStores.get((r[i] || '').trim()); if (ss) for (const x of ss) touched.add(x); } }
   }
   const targets = [...touched].filter(canUploadStore);
+  const src = { res: new Map(data.res), pay: new Map(data.pay), items: new Map(data.items), cust: new Map(data.cust) }; // 保存中に画面が読み込み直しても、今回のCSVが消えないよう写しを取っておく
   state.loadMsg = msgs.join('<br>');
   rebuild(); render();
   if (!targets.length) return;
@@ -1649,7 +1650,7 @@ async function loadFiles(files) {
     try {
       for (const full of targets) {
         const a = asOfNew[full] !== undefined ? Math.max(asOfNew[full], (storeData[sid(full)] && storeData[sid(full)].asOf) || 0) : ((storeData[sid(full)] && storeData[sid(full)].asOf) || todayDay());
-        await saveStore(full, data, a);
+        await saveStore(full, src, a);
       }
       mergeAll(); rebuild();
       flash(`保存しました（${targets.map(shortStore).join('、')}）。ほかの人の画面にも反映されます。`);

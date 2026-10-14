@@ -687,7 +687,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-5';
+const APP_VER = '10/14-6';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1275,9 +1275,12 @@ function statusAt(p, c) {
   return 'nobook';
 }
 const CT_WINDOW = 30; // 送ってから何日以内の来院を「戻った」に数えるか
-/* 戻った：送ってから30日以内に来院した、または次の予約が入っている */
-const cameBack = (p, c) => { const d = toDay(c.d); return p.visits.some(v => v.day > d && v.day <= d + CT_WINDOW) || !!(p.booking && p.booking.day > d); };
-const waiting = (p, c) => !cameBack(p, c) && model.asOf - toDay(c.d) < CT_WINDOW;
+/* 戻った：送ってから30日以内に来院した人。30日たつまでは「結果待ち」で、そのあいだは次の予約が入っていれば仮に戻ったに数える。
+   30日たったら来院だけで確定するので、あとから数字が変わらない */
+const visitedWithin = (p, c) => { const d = toDay(c.d); return p.visits.some(v => v.day > d && v.day <= d + CT_WINDOW); };
+const settled = (p, c) => p.asOf - toDay(c.d) >= CT_WINDOW;
+const cameBack = (p, c) => visitedWithin(p, c) || (!settled(p, c) && !!(p.booking && p.booking.day > toDay(c.d)));
+const waiting = (p, c) => !settled(p, c) && !visitedWithin(p, c);
 const ymOf = d => dayISO(d).slice(0, 7); // 'YYYY-MM'
 const ymLabel = ym => `${+ym.slice(0, 4)}年${+ym.slice(5)}月`;
 function contactTable() {
@@ -1294,7 +1297,7 @@ function contactTable() {
   const byKey = new Map(); for (const r of sel) { const k = state.single ? r.p.staff : shortStore(r.p.store); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(r); }
   const nWait = sel.filter(r => r.wait).length, nWaitAll = recs.filter(r => r.wait).length;
   const shown = months.slice(0, 12);
-  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>送った月ごとに、<b>戻った人／送った人</b>を数えています。「戻った」は、送ってから${CT_WINDOW}日以内に来院したか、次の予約が入った人です。来院と予約はCSVを入れると反映されます。</p>
+  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>送った月ごとに、<b>戻った人／送った人</b>を数えています。「戻った」は、送ってから${CT_WINDOW}日以内に来院した人です。${CT_WINDOW}日たつまでは結果待ちで、次の予約が入っていれば仮に数えます。${CT_WINDOW}日たつと確定し、そのあとは変わりません。来院と予約はCSVを入れると反映されます。</p>
     <h3 class="cth">月ごと</h3>
     <div style="overflow-x:auto"><table class="cttbl">${head('送った月')}${shown.map(ym => row(`<button class="lk" data-ctmonth="${ym}">${ymLabel(ym)}</button>${recs.some(r => r.ym === ym && r.wait) ? ' <small style="color:var(--sub)">結果待ちあり</small>' : ''}`, recs.filter(r => r.ym === ym))).join('')}${shown.length > 1 ? row('<b>合計</b>', recs.filter(r => shown.includes(r.ym))) : ''}</table></div>
     <div class="ctmonths" role="group" aria-label="内訳を見る月">${shown.map(ym => `<button class="chip" data-ctmonth="${ym}" aria-pressed="${ym === state.ctMonth}">${ymLabel(ym)}</button>`).join('')}</div>
@@ -1302,7 +1305,7 @@ function contactTable() {
     <div style="overflow-x:auto"><table class="cttbl">${head('状況')}${groups.map(([k, n]) => row(n, sel.filter(r => r.g === k))).join('')}${groups.length > 1 ? row('<b>合計</b>', sel) : ''}</table></div>
     <h3 class="cth">${ymLabel(state.ctMonth)}　${state.single ? '担当ごと' : '院ごと'}</h3>
     <div style="overflow-x:auto"><table class="cttbl">${head(state.single ? '担当' : '院')}${[...byKey.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(esc(k), l)).join('')}${byKey.size > 1 ? row('<b>合計</b>', sel) : ''}</table></div>
-    <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWaitAll ? `送ってから${CT_WINDOW}日たっていない記録は「結果待ち」で、まだ戻っていない人に数えています（${ymLabel(state.ctMonth)}は${nWait}件）。月の数字は、${CT_WINDOW}日たつまで増えることがあります。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
+    <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWaitAll ? `「結果待ちあり」の月は、まだ数字が確定していません（${ymLabel(state.ctMonth)}の結果待ちは${nWait}件）。報告には、結果待ちがなくなった月の数字を使ってください。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
 }
 function viewFollow() {
   const all = scoped();

@@ -282,7 +282,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 .ratebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:10px 0 4px;font-size:13px;color:var(--sub)} .ratebar label{color:var(--ink);font-weight:700}
 .rbars .brow{grid-template-columns:96px 1fr 52px 104px 104px} .rbars .brow span:nth-child(n+3){text-align:right} .rbars .brow span:nth-child(4){color:var(--sub);font-weight:400} .rbars .brow.head{cursor:default;font-size:12px;color:var(--sub)} .rbars .brow.head:hover{background:none} .rbars .brow.head span{font-weight:400}
 .endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
-.soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px}
+.soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px} .soonbox .oc{margin-left:auto;font-size:14px;font-weight:700;color:var(--ai);text-decoration:underline;text-underline-offset:3px;white-space:nowrap} .soonbox summary h2{flex-wrap:wrap}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
 @media (max-width:700px){ .rbars .brow{grid-template-columns:72px 1fr 40px 0 84px} .rbars .brow span:nth-child(4){display:none} .calls .crow{flex-wrap:wrap} }
@@ -695,7 +695,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-9';
+const APP_VER = '10/14-10';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1462,7 +1462,7 @@ function viewRenew() {
   const soon = act.filter(p => p.renewSoon).sort((x, y) => x.remaining - y.remaining);
   if (soon.length) {
     const done = soon.filter(callOf).length, open = state.open.soon !== false;
-    top += `<details class="card soonbox" data-g="soon"${open ? ' open' : ''}><summary><h2>そろそろ更新の声かけをする患者さん <small>${soon.length}人・声かけ済み ${done}人</small></h2></summary>
+    top += `<details class="card soonbox" data-g="soon"${open ? ' open' : ''}><summary><h2>そろそろ更新の声かけをする患者さん <small>${soon.length}人・声かけ済み ${done}人</small><span class="oc">${open ? '閉じる' : '開く'}</span></h2></summary>
       <p>回数券の残りが${model.settings.soon}回以下です。声をかけたら「声かけ済み」を押してください。もう一度押すと取り消せます。</p><div class="mini calls">` +
       soon.map(p => { const c = callOf(p); return `<div class="crow"><button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button><button class="tick" data-call="${esc(p.id)}" aria-pressed="${!!c}"><i></i>${c ? `声かけ済み ${md(toDay(c))}` : '声かけ済み'}</button></div>`; }).join('') + '</div></details>';
   }

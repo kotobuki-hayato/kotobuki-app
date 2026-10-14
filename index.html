@@ -687,7 +687,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-6';
+const APP_VER = '10/14-7';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1719,7 +1719,7 @@ function storeChoices() {
 const areaOfShort = k => { const a = (state.areasAll || []).find(a => a.stores.some(x => keyOf(x) && k.includes(keyOf(x)))); return a ? a.name : ''; };
 function viewMembers() {
   if (!canUpload()) return '<div class="list"><div class="empty">この画面は、エリマネと管理者だけが使えます。</div></div>';
-  const mine = myStores(), choices = storeChoices(), ed = state.memEdit || {};
+  const mine = myStores(), choices = storeChoices(), editing = !!state.memEdit, ed = Object.assign({}, state.memEdit || {}, state.memDraft || {});
   const list = (state.members || []).map(x => Object.assign({ email: x.id }, x.data))
     .filter(m => isAdmin() || (m.role === 'staff' && (m.stores || []).some(s => mine.includes(s))) || m.email === state.me.email)
     .sort((a, b) => ['admin', 'am', 'staff'].indexOf(a.role) - ['admin', 'am', 'staff'].indexOf(b.role) || String((a.stores || [])[0] || '').localeCompare(String((b.stores || [])[0] || ''), 'ja') || String(a.name).localeCompare(String(b.name), 'ja'));
@@ -1728,17 +1728,17 @@ function viewMembers() {
   const checked = new Set(ed.stores || []);
   const roleSel = isAdmin() ? `<label>役割 <select name="role">${['staff', 'am', 'admin'].map(r => `<option value="${r}"${(ed.role || 'staff') === r ? ' selected' : ''}>${ROLE[r]}</option>`).join('')}</select></label>` : '<input type="hidden" name="role" value="staff">';
   return `<p class="guide">このアプリを使う人を登録します。登録すると、その人に「パスワードの再設定」というメールが届きます。メールのリンクからパスワードを決めれば、ログインできるようになります。${isAdmin() ? '' : 'エリマネは、担当の院のスタッフを登録できます。'}</p>
-  <div class="grid2"><div class="card"><h2>${ed.email ? '登録を変える' : '新しく登録する'}</h2>
+  <div class="grid2"><div class="card"><h2>${editing ? '登録を変える' : '新しく登録する'}</h2>
     <form id="fMem" class="memform">
       <label>名前 <input type="text" name="name" value="${esc(ed.name || '')}" placeholder="例：山田 太郎" required></label>
-      <label>メールアドレス <input type="email" name="email" value="${esc(ed.email || '')}"${ed.email ? ' readonly' : ''} required></label>
+      <label>メールアドレス <input type="email" name="email" value="${esc(ed.email || '')}"${editing ? ' readonly' : ''} required></label>
       ${roleSel}
       <fieldset><legend>見られる院</legend>
         ${areas.length > 1 || isAdmin() ? `<p class="areapick">${areas.map(a => `<button type="button" class="chip" data-act="pickArea" data-a="${esc(a.name)}">${esc(a.name)}をまとめて</button>`).join('')}</p>` : ''}
         <div class="storepick">${choices.map(k => `<label class="ck"><input type="checkbox" name="st" value="${esc(k)}"${checked.has(k) ? ' checked' : ''}>${esc(k)}${isAdmin() && areaOfShort(k) ? `<small>${esc(areaOfShort(k))}</small>` : ''}</label>`).join('') || '<span style="color:var(--sub)">選べる院がありません。</span>'}</div>
         ${isAdmin() ? '<p class="hint">管理者は、ここで選ばなくても全部の院を見られます。</p>' : ''}
       </fieldset>
-      <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn">${ed.email ? '変更を保存' : '登録してメールを送る'}</button>${ed.email ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
+      <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn">${editing ? '変更を保存' : '登録してメールを送る'}</button>${editing ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
     </form></div>
   <div class="card"><h2>登録されている人 <small style="color:var(--sub);font-weight:400">${list.length}人</small></h2>
     <table class="memtbl"><tbody>${list.map(m => `<tr><td><b>${esc(m.name || '')}</b><br><small>${esc(m.email)}</small></td><td><span class="role r-${esc(m.role)}">${ROLE[m.role] || esc(m.role)}</span></td>
@@ -1764,14 +1764,14 @@ document.addEventListener('submit', async e => {
       const created = await FB.createAccount(email, backUrl());
       flash(created ? `${name}さんを登録して、パスワードを決めるメールを送りました。` : `${name}さんを登録しました。このメールアドレスは前から登録があったため、パスワードを決め直すメールを送りました。`);
     } else flash(`${name}さんの登録を変えました。`);
-    state.memEdit = null; render();
+    state.memEdit = null; state.memDraft = null; state.memFresh = true; render();
   } catch (err) { btn.disabled = false; flash(denied(err) ? '登録する権限がありません。担当の院だけを選んでいるか確認してください。' : (err && err.code && AUTH_MSG[err.code]) ? AUTH_MSG[err.code] : '登録できませんでした。もう一度お試しください。'); }
 });
 document.addEventListener('click', async e => {
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act;
-  if (act === 'memEdit') { const m = memberOf(a.dataset.e); if (m) { state.memEdit = m; render(); window.scrollTo(0, 0); } }
-  else if (act === 'memCancel') { state.memEdit = null; render(); }
+  if (act === 'memEdit') { const m = memberOf(a.dataset.e); if (m) { state.memEdit = m; state.memDraft = null; state.memFresh = true; render(); window.scrollTo(0, 0); } }
+  else if (act === 'memCancel') { state.memEdit = null; state.memDraft = null; state.memFresh = true; render(); }
   else if (act === 'pickArea') {
     const ar = (state.areasAll || []).find(x => x.name === a.dataset.a); if (!ar) return;
     for (const c of document.querySelectorAll('#fMem input[name=st]')) if (ar.stores.some(x => keyOf(x) && c.value.includes(keyOf(x)))) c.checked = true;
@@ -1784,10 +1784,19 @@ document.addEventListener('click', async e => {
   }
 });
 
+/* 入力の途中で画面が描き直されても、打った内容が消えないように取っておく */
+function keepMemDraft() {
+  if (state.memFresh) { state.memFresh = false; return; } // 登録・変更・やめるの直後は、前の入力を引き継がない
+  const f = $('#fMem'); if (!f) return;
+  state.memDraft = { name: f.name.value, email: f.email.value, role: f.role ? f.role.value : 'staff', stores: [...f.querySelectorAll('input[name=st]:checked')].map(x => x.value) };
+}
+
 /* ---- 描画と操作 ---- */
 function render() {
   const v = $('#view');
+  if (state.tab === 'mem') { const ae = document.activeElement, keep = ae && ae.closest && ae.closest('#fMem') ? { n: ae.name, s: ae.selectionStart } : null; keepMemDraft(); state.memFocus = keep; }
   v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : viewSet();
+  if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;

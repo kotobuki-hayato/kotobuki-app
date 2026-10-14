@@ -281,6 +281,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 @media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
 .ratebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:10px 0 4px;font-size:13px;color:var(--sub)} .ratebar label{color:var(--ink);font-weight:700}
 .rbars .brow{grid-template-columns:96px 1fr 52px 104px 104px} .rbars .brow span:nth-child(n+3){text-align:right} .rbars .brow span:nth-child(4){color:var(--sub);font-weight:400} .rbars .brow.head{cursor:default;font-size:12px;color:var(--sub)} .rbars .brow.head:hover{background:none} .rbars .brow.head span{font-weight:400}
+.endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
@@ -694,7 +695,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-8';
+const APP_VER = '10/14-9';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1448,12 +1449,13 @@ function viewRenew() {
       ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
   if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
-    if (next3.length) top += `<div class="kv"><span>この先${next3.length}か月（${mlabel(next3[0])}〜${mlabel(next3[next3.length - 1])}）　<b>${n3.length}</b>人</span><span>最大 <b>${yen(sum(n3))}</b></span><span>見込み <b>${yen(sum(n3) * rate / 100)}</b></span></div>`;
+    const selPs = months.get(state.month);
+    top += `<div class="kv"><span>${mlabel(state.month)}に終了　<b>${selPs.length}</b>人</span><span>最大 <b>${yen(sum(selPs))}</b></span><span>見込み <b>${yen(sum(selPs) * rate / 100)}</b></span></div><p class="note" style="margin:2px 0 0">下の月を押すと、その月の金額に切り替わります。</p>`;
     top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>最大</span><span>見込み</span></div>' + keys.map(k => { const ps = months.get(k), m = sum(ps); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}</span><span><i style="width:${ps.length / max * 100}%"></i></span><span>${ps.length}人</span><span>${yen(m)}</span><span><b>${yen(m * rate / 100)}</b></span></button>`; }).join('') + '</div>';
     if (noPrice.length) top += `<p class="note" style="margin-top:8px">金額が決まっていない回数券（${noTypes.map(esc).join('・')}）の${noPrice.length}人は、金額に入れていません。${canManage() ? '「設定」の「回数券の金額」で決められます。' : ''}</p>`;
     const ps = months.get(state.month).slice().sort((a, b) => a.endDay - b.endDay);
-    top += `<h3 style="font-size:14px;margin:18px 0 0">${mlabel(state.month)}に終了する見込みの患者さん　<small style="color:var(--sub);font-weight:400">${ps.length}人・最大 ${yen(sum(ps))}・見込み ${yen(sum(ps) * rate / 100)}</small></h3><div class="mini">` +
-      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃${priceOf(p.tk.type) ? '・' + yen(priceOf(p.tk.type)) : ''}</small></span></button>`).join('') + '</div>';
+    top += `<details class="endlist" data-g="endlist"${state.open.endlist ? ' open' : ''}><summary><h3>${mlabel(state.month)}に終了する見込みの患者さん　<small>${ps.length}人・最大 ${yen(sum(ps))}・見込み ${yen(sum(ps) * rate / 100)}</small><span class="oc">${state.open.endlist ? '閉じる' : '開く'}</span></h3></summary><div class="mini">` +
+      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃${priceOf(p.tk.type) ? '・' + yen(priceOf(p.tk.type)) : ''}</small></span></button>`).join('') + '</div></details>';
   }
   top += '</div>';
 
@@ -1884,7 +1886,7 @@ document.addEventListener('drop', e => {
   e.preventDefault(); z.classList.remove('on');
   if (e.dataTransfer && e.dataTransfer.files.length) loadFiles([...e.dataTransfer.files]);
 });
-document.addEventListener('toggle', e => { const g = e.target.dataset && e.target.dataset.g; if (g) state.open[g] = e.target.open; }, true);
+document.addEventListener('toggle', e => { const g = e.target.dataset && e.target.dataset.g; if (g) { state.open[g] = e.target.open; const oc = e.target.querySelector(':scope > summary .oc'); if (oc) oc.textContent = e.target.open ? '閉じる' : '開く'; } }, true);
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (state.tab === 'cal') render(); }, 150); });
 
 boot();

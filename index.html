@@ -279,6 +279,12 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
   .cal{width:calc(50% - 9px);min-width:150px}
 }
 @media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
+.ratebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:10px 0 4px;font-size:13px;color:var(--sub)} .ratebar label{color:var(--ink);font-weight:700}
+.rbars .brow{grid-template-columns:96px 1fr 52px 104px 104px} .rbars .brow span:nth-child(n+3){text-align:right} .rbars .brow span:nth-child(4){color:var(--sub);font-weight:400} .rbars .brow.head{cursor:default;font-size:12px;color:var(--sub)} .rbars .brow.head:hover{background:none} .rbars .brow.head span{font-weight:400}
+.soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px}
+.calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
+table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
+@media (max-width:700px){ .rbars .brow{grid-template-columns:72px 1fr 40px 0 84px} .rbars .brow span:nth-child(4){display:none} .calls .crow{flex-wrap:wrap} }
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -426,7 +432,8 @@ const RE_BUY = /([A-Za-z]*)\s*(\d+)\s*回(?:数券|券|数)/; // 「S10回券」
 const RE_USE3 = /^\s*([A-Za-z]+)\s*(\d+)\s*回券/;        // 施術メニューとして登録された「R3回券」は、その回数券の1回分
 const RE_HALF = /0\.5\s*回分/;
 
-const DEFAULT_SETTINGS = { b1: 6, d1: 7, b2: 12, d2: 14, d3: 28, renewDays: 14, tol: 3, soon: 3, awayDays: 60, alertDays: 30, startDay: '' };
+const DEFAULT_PRICES = { S5: 37500, S10: 70000, S15: 100000, S20: 120000, R5: 70000, R10: 130000, R15: 180000, R30: 300000 };
+const DEFAULT_SETTINGS = { b1: 6, d1: 7, b2: 12, d2: 14, d3: 28, renewDays: 14, tol: 3, soon: 3, awayDays: 60, alertDays: 30, startDay: '', renewRate: 60, prices: DEFAULT_PRICES };
 const PACE_CHOICES = [7, 14, 21, 28];
 
 /* 初めての回数券の n回目（1始まり）の前に空ける目安日数 */
@@ -687,7 +694,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-7';
+const APP_VER = '10/14-8';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -701,7 +708,7 @@ const ymd = n => { const d = dayToDate(n); return `${d.getUTCFullYear()}/${d.get
 let data = emptyData(), model;
 const state = { tab: 'follow', staff: '', store: '', area: '', areas: [], asOfByStore: {}, single: '', storeList: [], calMode: 'attn', open: {}, month: null, asOf: todayDay(),
   settings: Object.assign({}, DEFAULT_SETTINGS), pace: {}, loadMsg: '', openId: null,
-  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
+  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, renewCall: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
 
 /* ---- LINE・手紙の記録 ----
    院ごとに1つの文書（contacts/s-xxxx）に、{ p: { 顧客ID: [{d:'YYYY-MM-DD', m:'line'|'letter'}] } } で残す */
@@ -852,6 +859,12 @@ function saveContacts(p, list, msg, undo) {
     .then(() => flash(msg || '記録しました。', undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
   for (const o of Object.keys(contactsBy)) if (o !== s && Array.isArray(contactsBy[o][p.id]) && contactsBy[o][p.id].length) enqueue(() => FB.set('contacts/' + o, { p: { [p.id]: [] } }, true).catch(() => {})); // ほかの院に残っている古い記録は空にする（転院した人）
 }
+function saveCall(p, d, msg, undo) {
+  if (d) state.renewCall[p.id] = d; else delete state.renewCall[p.id];
+  rebuild();
+  enqueue(() => FB.set('contacts/' + sid(p.store), { r: { [p.id]: d } }, true)
+    .then(() => flash(msg, undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
+}
 function addContact(id, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
   const d = dayISO(todayDay()), list = contactsOf(p);
@@ -878,13 +891,14 @@ function savePace(id, days) {
 }
 
 /* 院ごとの LINE・手紙 と 来院ペース を1つにまとめる */
-const contactsBy = {}, paceBy = {};
+const contactsBy = {}, paceBy = {}, callsBy = {};
 function mergeSide() {
   const c = {}, p = {};
   for (const s of Object.keys(contactsBy)) for (const k of Object.keys(contactsBy[s])) if (Array.isArray(contactsBy[s][k])) c[k] = (c[k] || []).concat(contactsBy[s][k]);
   for (const k of Object.keys(c)) c[k] = uniqCt(c[k]);
   for (const s of Object.keys(paceBy)) Object.assign(p, paceBy[s]);
-  state.contacts = c; state.pace = p;
+  const rc = {}; for (const s of Object.keys(callsBy)) for (const k of Object.keys(callsBy[s])) if (callsBy[s][k] && (!rc[k] || callsBy[s][k] > rc[k])) rc[k] = callsBy[s][k];
+  state.contacts = c; state.pace = p; state.renewCall = rc;
 }
 
 /* ---- ログインと読み込み ---- */
@@ -892,7 +906,7 @@ let unsubs = [];
 const watched = new Set();
 function watchStore(s) {
   if (watched.has(s)) return; watched.add(s);
-  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
+  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; callsBy[s] = (x && x.r) || {}; mergeSide(); rebuild(); }, () => {}));
   unsubs.push(FB.watch('pace/' + s, (x, pending) => { if (pending) return; paceBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
 }
 function onMetas(list, first) {
@@ -1405,6 +1419,10 @@ function viewCal() {
 }
 
 /* ---- 更新見込み ---- */
+/* 更新の売上見込み：同じ回数券で更新した場合の金額 */
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const priceOf = t => { const pr = Object.assign({}, DEFAULT_PRICES, model.settings.prices || {}); const v = Number(pr[t]); return v > 0 ? v : null; };
+const callOf = p => { const d = state.renewCall[p.id]; return d && (!p.tk || p.tk.start === null || toDay(d) >= p.tk.start) ? d : null; }; // いまの回数券のあいだに声かけした日
 function viewRenew() {
   const sc = scoped().filter(p => p.isTicket);
   const act = sc.filter(p => p.status !== 'ended' && p.status !== 'away'), known = act.filter(p => p.endDay !== null);
@@ -1414,36 +1432,44 @@ function viewRenew() {
   if (!keys.includes(state.month)) state.month = keys[0] || null;
   const max = Math.max(1, ...keys.map(k => months.get(k).length));
   const mlabel = k => `${+k.slice(0, 4)}年${+k.slice(5)}月`;
-
-  let left = `<div class="card"><h2>回数券が終了する見込み</h2>
-    <p>今のペースで通った場合に最後の1回が来る月です。次回予約がある人は予約日から、ない人は目安日から数えています。</p>`;
-  if (!keys.length) left += '<div class="empty">対象の患者さんがまだいません。</div>';
-  else {
-    left += '<div class="bars">' + keys.map(k => `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}</span><span><i style="width:${months.get(k).length / max * 100}%"></i></span><span>${months.get(k).length}人</span></button>`).join('') + '</div>';
-    const ps = months.get(state.month).slice().sort((a, b) => a.endDay - b.endDay);
-    left += `<h3 style="font-size:14px;margin:18px 0 0">${mlabel(state.month)}に終了する見込みの患者さん</h3><div class="mini">` +
-      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃</small></span></button>`).join('') + '</div>';
-  }
-  left += '</div>';
-
+  const rate = Math.max(0, Math.min(100, Number(model.settings.renewRate) || 0));
+  const sum = ps => ps.reduce((a, p) => a + (priceOf(p.tk.type) || 0), 0);
+  const noPrice = known.filter(p => !priceOf(p.tk.type)), noTypes = [...new Set(noPrice.map(p => p.tk.type))];
+  /* 参考：実際の更新率（更新のタイミングを迎えた人のうち、回数券を買った人） */
   const sd0 = model.settings.startDay ? toDay(model.settings.startDay) : null;
   const rp = model.renewPoints.filter(x => x.p.last && x.t.known && (sd0 === null || x.t.start >= sd0) && (!state.staff || x.p.staff === state.staff) && inArea(x.p.store, state.area) && (!state.store || x.p.store === state.store));
-  const yes = rp.filter(x => x.renewed).length, no = rp.length - yes;
-  let right = `<div class="card"><h2>更新のタイミングを迎えた患者さん</h2>
-    <p>対象の回数券で最後の1回（「回数券更新」の施術）を受けた人と、そのあと回数券を購入したかどうかです。</p>`;
-  if (!rp.length) right += '<div class="empty">該当する患者さんはいません。</div>';
+  const yes = rp.filter(x => x.renewed).length;
+  const next3 = keys.slice(0, 3), n3 = next3.flatMap(k => months.get(k));
+
+  let top = `<p class="guide">この先、いつ・何人の回数券が終了するかと、同じ回数券で更新した場合の売上の見込みです。</p>`;
+  top += `<div class="card" style="margin-bottom:20px"><h2>回数券が終了する見込みと、更新の売上見込み</h2>
+    <p>今のペースで通った場合に最後の1回が来る月です。次回予約がある人は予約日から、ない人は目安日から数えています。「最大」は全員が同じ回数券で更新した場合、「見込み」はそれに更新率をかけた金額です。</p>
+    <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canManage() ? '' : ' disabled'}> %</label>
+      ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
+  if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
-    right += `<div class="kv"><span><b>${rp.length}</b>人が更新のタイミング</span><span><b>${yes}</b>人が更新</span><span><b>${no}</b>人は更新せず終了</span></div>
-      <div class="split" role="img" aria-label="更新${yes}人、更新せず終了${no}人"><i class="a" style="width:${yes / rp.length * 100}%"></i><i class="b" style="width:${no / rp.length * 100}%"></i></div>`;
-    if (no) right += `<h3 style="font-size:14px;margin:16px 0 0">更新せず終了した${no}人</h3><div class="mini">` +
-      rp.filter(x => !x.renewed).sort((a, b) => a.t.endDay - b.t.endDay).map(x => `<button data-id="${esc(x.p.id)}"><span><b>${esc(pname(x.p))}</b> <small>${esc(tanto(x.p))}</small></span><span>${esc(x.t.type)} <small>${md(x.t.endDay)} が最後の1回・次回予約${x.p.booking ? 'あり' : 'なし'}</small></span></button>`).join('') + '</div>';
+    if (next3.length) top += `<div class="kv"><span>この先${next3.length}か月（${mlabel(next3[0])}〜${mlabel(next3[next3.length - 1])}）　<b>${n3.length}</b>人</span><span>最大 <b>${yen(sum(n3))}</b></span><span>見込み <b>${yen(sum(n3) * rate / 100)}</b></span></div>`;
+    top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>最大</span><span>見込み</span></div>' + keys.map(k => { const ps = months.get(k), m = sum(ps); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}</span><span><i style="width:${ps.length / max * 100}%"></i></span><span>${ps.length}人</span><span>${yen(m)}</span><span><b>${yen(m * rate / 100)}</b></span></button>`; }).join('') + '</div>';
+    if (noPrice.length) top += `<p class="note" style="margin-top:8px">金額が決まっていない回数券（${noTypes.map(esc).join('・')}）の${noPrice.length}人は、金額に入れていません。${canManage() ? '「設定」の「回数券の金額」で決められます。' : ''}</p>`;
+    const ps = months.get(state.month).slice().sort((a, b) => a.endDay - b.endDay);
+    top += `<h3 style="font-size:14px;margin:18px 0 0">${mlabel(state.month)}に終了する見込みの患者さん　<small style="color:var(--sub);font-weight:400">${ps.length}人・最大 ${yen(sum(ps))}・見込み ${yen(sum(ps) * rate / 100)}</small></h3><div class="mini">` +
+      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃${priceOf(p.tk.type) ? '・' + yen(priceOf(p.tk.type)) : ''}</small></span></button>`).join('') + '</div>';
   }
-  right += '</div>';
+  top += '</div>';
+
   const soon = act.filter(p => p.renewSoon).sort((x, y) => x.remaining - y.remaining);
-  let top = `<p class="guide">この先、いつ・何人の回数券が終了するかの見込みと、すでに更新のタイミングを迎えた人の結果です。</p>`;
-  if (soon.length) top += `<div class="card" style="margin-bottom:20px"><h2>そろそろ更新の声かけをする患者さん</h2><p>回数券の残りが${model.settings.soon}回以下です。</p><div class="mini">` +
-    soon.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button>`).join('') + '</div></div>';
-  return `${top}<div class="grid2">${left}${right}</div>`;
+  if (soon.length) {
+    const done = soon.filter(callOf).length, open = state.open.soon !== false;
+    top += `<details class="card soonbox" data-g="soon"${open ? ' open' : ''}><summary><h2>そろそろ更新の声かけをする患者さん <small>${soon.length}人・声かけ済み ${done}人</small></h2></summary>
+      <p>回数券の残りが${model.settings.soon}回以下です。声をかけたら「声かけ済み」を押してください。もう一度押すと取り消せます。</p><div class="mini calls">` +
+      soon.map(p => { const c = callOf(p); return `<div class="crow"><button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button><button class="tick" data-call="${esc(p.id)}" aria-pressed="${!!c}"><i></i>${c ? `声かけ済み ${md(toDay(c))}` : '声かけ済み'}</button></div>`; }).join('') + '</div></details>';
+  }
+  return top;
+}
+function toggleCall(id) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  const was = callOf(p), d = was ? '' : dayISO(todayDay());
+  saveCall(p, d, `${pname(p)}さん：声かけを${was ? '取り消しました' : '記録しました'}`, () => saveCall(p, was || '', '元に戻しました。'));
 }
 
 /* ---- CSVを入れる ---- */
@@ -1513,6 +1539,9 @@ function viewSet() {
       最後の来院から ${num('awayDays', 14, 365)}日以上で次の予約がない人は「しばらく来ていない」に分ける
     </div>
     ${adm ? '<p style="margin:12px 0 0"><button class="btn ghost" data-act="resetSet">目安を初期値に戻す</button></p>' : ''}
+  </div>
+  <div class="card"><h2>回数券の金額</h2><p>「更新見込み」の売上見込みに使います。同じ回数券で更新した場合の金額です。</p>
+    <table class="prices">${(() => { const pr = Object.assign({}, DEFAULT_PRICES, s.prices || {}); const types = [...new Set(Object.keys(pr).concat(model.patients.filter(p => p.tk && p.tk.known && /^[A-Z]+\d+$/.test(p.tk.type)).map(p => p.tk.type)))].sort((a, b) => a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, '')) || parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, ''))); return types.map(t => `<tr><td>${esc(t)}</td><td class="r">¥ <input type="number" inputmode="numeric" min="0" step="500" value="${pr[t] || ''}" data-price="${esc(t)}" aria-label="${esc(t)}の金額" placeholder="未設定"${dis}></td></tr>`).join(''); })()}</table>
   </div>
   <div class="card"><h2>エリアと院</h2><p>1行に1エリアで「エリア名：院名・院名…」と書きます。院名は、Quick Reserveの店舗名に入っている名前（千葉院など）にしてください。</p>
     <textarea id="areasText" rows="${Math.max(4, state.areas.length + 1)}" aria-label="エリアと院"${dis}>${esc(state.areas.map(a => a.name + '：' + a.stores.join('・')).join('\n'))}</textarea>
@@ -1799,9 +1828,10 @@ function render() {
   if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.ctmonth) { state.ctMonth = d.ctmonth; render(); }
+  if (d.call) toggleCall(d.call);
+  else if (d.ctmonth) { state.ctMonth = d.ctmonth; render(); }
   else if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }
   else if (d.area !== undefined) { state.area = d.area; state.store = ''; state.staff = ''; rememberArea(); rememberWho(); renderChrome(); render(); }
   else if (d.store !== undefined) { state.store = d.store; state.staff = ''; rememberWho(); renderChrome(); render(); }
@@ -1823,7 +1853,7 @@ document.addEventListener('click', e => {
     state.areasAll = list;
     enqueue(() => FB.set('config/areas', { list }).then(() => flash('エリアを保存しました。'), () => flash('エリアを保存できませんでした。管理者のアカウントか確認してください。')));
   }
-  else if (d.act === 'resetSet') { state.settings = Object.assign({}, DEFAULT_SETTINGS, { startDay: state.settings.startDay }); saveSettings(); rebuild(); render(); }
+  else if (d.act === 'resetSet') { state.settings = Object.assign({}, DEFAULT_SETTINGS, { startDay: state.settings.startDay, renewRate: state.settings.renewRate, prices: state.settings.prices }); saveSettings(); rebuild(); render(); }
 });
 $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.close(); state.openId = null; } });
 $('#dlg').addEventListener('close', () => { state.openId = null; });
@@ -1839,6 +1869,7 @@ document.addEventListener('change', e => {
     for (const s of targets) storeData[s].asOf = d;
     mergeAll(); rebuild();
     enqueue(() => Promise.all(targets.map(s => FB.set('stores/' + s, { asOf: dayISO(d) }, true))).then(() => flash('基準日を保存しました。'), () => flash('保存できませんでした。'))); } }
+  else if (t.dataset.price) { const v = Math.round(Number(t.value)); const pr = Object.assign({}, DEFAULT_PRICES, state.settings.prices || {}); if (t.value === '' ) delete pr[t.dataset.price]; else if (Number.isFinite(v) && v >= 0) pr[t.dataset.price] = v; state.settings.prices = pr; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); }
   else if (t.id === 'startDay') { state.settings.startDay = t.value || ''; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); }
   else if (t.dataset.set) {
     const v = Math.round(Number(t.value));

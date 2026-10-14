@@ -843,11 +843,13 @@ function saveSettings() {
   const body = Object.assign({}, state.settings);
   enqueue(() => FB.set('config/settings', body).then(() => flash('設定を保存しました。'), () => flash('設定を保存できませんでした。管理者のアカウントか確認してください。')));
 }
+const uniqCt = l => { const m = new Map(); for (const c of l) { if (!c || !c.d) continue; const k = c.d + '|' + c.m; if (!m.has(k) || (c.s && !m.get(k).s)) m.set(k, c); } return [...m.values()]; }; // 同じ日・同じ方法の記録は1つにまとめる
 function saveContacts(p, list, msg, undo) {
   state.contacts[p.id] = list; rebuild();
   const s = sid(p.store);
   enqueue(() => FB.set('contacts/' + s, { p: { [p.id]: list } }, true)
     .then(() => flash(msg || '記録しました。', undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
+  for (const o of Object.keys(contactsBy)) if (o !== s && Array.isArray(contactsBy[o][p.id]) && contactsBy[o][p.id].length) enqueue(() => FB.set('contacts/' + o, { p: { [p.id]: [] } }, true).catch(() => {})); // ほかの院に残っている古い記録は空にする（転院した人）
 }
 function addContact(id, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
@@ -879,6 +881,7 @@ const contactsBy = {}, paceBy = {};
 function mergeSide() {
   const c = {}, p = {};
   for (const s of Object.keys(contactsBy)) for (const k of Object.keys(contactsBy[s])) if (Array.isArray(contactsBy[s][k])) c[k] = (c[k] || []).concat(contactsBy[s][k]);
+  for (const k of Object.keys(c)) c[k] = uniqCt(c[k]);
   for (const s of Object.keys(paceBy)) Object.assign(p, paceBy[s]);
   state.contacts = c; state.pace = p;
 }

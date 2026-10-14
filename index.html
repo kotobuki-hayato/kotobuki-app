@@ -679,6 +679,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
+const APP_VER = '10/14-3';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1459,6 +1460,7 @@ function viewCsv() {
     <ul class="facts">
       <li>いま入っているデータ　<b>予約</b> ${c.res}件${c.res ? `（${md(model.dataStart)}〜${md(model.dataEnd)}）` : ''}　<b>精算</b> ${c.pay}件　<b>精算アイテム</b> ${c.items}件　<b>顧客名</b> ${c.cust}人分</li>
       ${saved ? `<li>最後の保存 ${saved}</li>` : ''}
+      <li>アプリの版 ${APP_VER}</li>
       <li><label>データの基準日を手で直す${model.stores.length > 1 ? '（全院をこの日にそろえる）' : ''} <input type="date" id="asOf" value="${dayISO(model.asOf)}"${dis}></label></li>
       <li>氏名以外の個人情報（電話番号や住所など）は、このページには保存しません。</li>
       <li>2回目から早く開けるよう、来院の記録をこの端末のブラウザに置いています。患者さんの氏名は端末には置きません。ログアウトすると消えます。</li>

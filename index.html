@@ -701,7 +701,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/17-2';
+const APP_VER = '10/17-3';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1394,16 +1394,15 @@ function gapTable() {
   const ps = visibleAll(); if (!ps.length) return '';
   const recs = [];
   for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d), lv = p.visits.filter(v => v.day <= d).pop(); if (!lv) continue; recs.push({ gap: d - lv.day, back: cameBack(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
-  const nat = naturalReturn(ps);
   const cell = (b, n) => n ? `<b>${b}</b>/${n}人<small class="pct">${Math.round(b / n * 100)}%</small>` : '<span style="color:var(--sub)">—</span>';
   const ct = l => cell(l.filter(r => r.back).length, l.length);
   const early = recs.filter(r => r.gap < 14);
   return `<details class="card sum gapbox" data-g="gap"${state.open.gap !== false ? ' open' : ''}><summary><h2>空いた期間ごとの戻りやすさ<span class="oc">${state.open.gap !== false ? '閉じる' : '開く'}</span></h2></summary>
-    <p>最後の来院からどのくらい空いた人が、そこから${CT_WINDOW}日以内に戻ったかです。「何もしなくても」は、これまでの来院データから、回数券が残っているのに次の予約を取らずに帰り、その日数まで来なかった人（LINE・手紙を送らなかった人）を数えています。LINE・手紙は、送ったときに空いていた日数で分けています（これまでの全記録）。</p>
-    <div style="overflow-x:auto"><table class="cttbl gaptbl"><tr><th>空いた期間</th><th class="r">何もしなくても</th><th class="r">LINE</th><th class="r">手紙</th></tr>
-    ${early.length ? `<tr><td>2週間未満</td><td class="r"><span style="color:var(--sub)">—</span></td><td class="r">${ct(early.filter(r => r.m === 'line'))}</td><td class="r">${ct(early.filter(r => r.m === 'letter'))}</td></tr>` : ''}
-    ${GAP_BINS.map(([a, b, l], k) => { const l2 = recs.filter(r => r.gap >= a && r.gap < b); return `<tr><td>${l}</td><td class="r">${cell(nat[k].b, nat[k].n)}</td><td class="r">${ct(l2.filter(r => r.m === 'line'))}</td><td class="r">${ct(l2.filter(r => r.m === 'letter'))}</td></tr>`; }).join('')}</table></div>
-    <p class="note" style="margin-top:8px">見かた：「何もしなくても」の割合が大きく下がる期間までに声をかけるのが目安です。LINE・手紙の割合が「何もしなくても」より高いほど、声かけが効いています。LINE・手紙は人数が少ないうちは割合が大きく動くので、人数とあわせて見てください。</p></details>`;
+    <p>LINE・手紙を送ったときに、最後の来院からどのくらい空いていたかで分けて、そこから${CT_WINDOW}日以内に戻った人を数えています（これまでの全記録）。</p>
+    <div style="overflow-x:auto"><table class="cttbl gaptbl"><tr><th>空いた期間</th><th class="r">LINE</th><th class="r">手紙</th><th class="r">合計</th></tr>
+    ${early.length ? `<tr><td>2週間未満</td><td class="r">${ct(early.filter(r => r.m === 'line'))}</td><td class="r">${ct(early.filter(r => r.m === 'letter'))}</td><td class="r">${ct(early)}</td></tr>` : ''}
+    ${GAP_BINS.map(([a, b, l], k) => { const l2 = recs.filter(r => r.gap >= a && r.gap < b); return `<tr><td>${l}</td><td class="r">${ct(l2.filter(r => r.m === 'line'))}</td><td class="r">${ct(l2.filter(r => r.m === 'letter'))}</td><td class="r">${ct(l2)}</td></tr>`; }).join('')}</table></div>
+    <p class="note" style="margin-top:8px">戻る割合が大きく下がる期間までに声をかけるのが目安です。人数が少ないうちは割合が大きく動くので、人数とあわせて見てください。</p></details>`;
 }
 function viewFollow() {
   const all = scoped();

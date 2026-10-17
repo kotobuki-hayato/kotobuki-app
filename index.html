@@ -289,6 +289,7 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
 .sumtbl th.sub,.sumtbl td.sub{font-size:13px} .sumtbl th.sub{color:var(--sub);font-weight:400} .sumtbl th.grp,.sumtbl td.grp{border-left:2px solid var(--line)} .sumtbl td.sub:last-of-type{} 
 #dlg .back{display:block;margin:0 0 6px;font-size:14px}
+.gapbox summary{cursor:pointer;list-style:none} .gapbox summary::-webkit-details-marker{display:none} .gapbox summary h2{display:flex;align-items:center;gap:8px} .gapbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .gapbox[open] summary h2::before{transform:rotate(90deg)} .gapbox .oc{margin-left:auto;font-size:14px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -529,7 +530,7 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
           }
         }
       }
-      visits.push({ day: d, staff, names, use, uses, useW, renewItem, buys, isNew: valid.some(r => r.isNew), store: valid[0].store });
+      visits.push({ day: d, staff, names, use, uses, useW, renewItem, buys, isNew: valid.some(r => r.isNew), store: valid[0].store, booked: valid.some(r => r.next !== null && r.next > 0) });
     }
 
     /* 回数券の流れを組み立てる */
@@ -698,7 +699,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/14-11';
+const APP_VER = '10/17-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1353,6 +1354,44 @@ function contactTable() {
     <div style="overflow-x:auto"><table class="cttbl">${head(state.single ? '担当' : '院')}${[...byKey.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, l]) => row(esc(k), l)).join('')}${byKey.size > 1 ? row('<b>合計</b>', sel) : ''}</table></div>
     <p class="note" style="margin-top:8px">人数が少ないうちは、割合が大きく動きます。人数とあわせて見てください。${nWaitAll ? `「結果待ちあり」の月は、まだ数字が確定していません（${ymLabel(state.ctMonth)}の結果待ちは${nWait}件）。報告には、結果待ちがなくなった月の数字を使ってください。` : ''}前からの記録の「送ったときの状況」は、来院データから推定しています。</p></div>`;
 }
+/* 空いた期間ごとの戻りやすさ：LINE・手紙を送ったときに空いていた日数と、何もしなかった人が自然に戻った割合を並べる */
+const GAP_BINS = [[14, 21, '2週間〜3週間'], [21, 30, '3週間〜1か月'], [30, 60, '1か月〜2か月'], [60, Infinity, '2か月以上']];
+function naturalReturn(ps) {
+  /* 回数券が残っているあいだに a日以上来なかった人のうち、そこから30日以内に来院した割合。LINE・手紙を送った期間は除く */
+  const out = GAP_BINS.map(() => ({ n: 0, b: 0 }));
+  for (const p of ps) {
+    if (!p.visits.length) continue;
+    const sent = contactsOf(p).map(c => toDay(c.d));
+    const remainAfter = new Map(); // 来院日 → その日のあと回数券が残っていたか
+    for (const t of p.tickets) if (t.known) { let used = 0; for (const d of t.uses) { used++; remainAfter.set(d, used < t.N); } }
+    for (let i = 0; i < p.visits.length; i++) {
+      const from = p.visits[i].day; if (!remainAfter.get(from) || p.visits[i].booked) continue; // 次の予約を取らずに帰った来院だけ
+      const next = i + 1 < p.visits.length ? p.visits[i + 1].day : null, end = next !== null ? next : p.asOf;
+      GAP_BINS.forEach(([a], k) => {
+        const reach = from + a; if (end < reach) return;           // a日たつ前に来院した
+        if (sent.some(d => d > from && d <= reach + CT_WINDOW)) return; // 声をかけた人は除く
+        if (next === null && p.asOf < reach + CT_WINDOW) return;    // まだ結果が出ていない
+        out[k].n++; if (next !== null && next <= reach + CT_WINDOW) out[k].b++;
+      });
+    }
+  }
+  return out;
+}
+function gapTable() {
+  const ps = visible(); if (!ps.length) return '';
+  const recs = [];
+  for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d), lv = p.visits.filter(v => v.day <= d).pop(); if (!lv) continue; recs.push({ gap: d - lv.day, back: cameBack(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
+  const nat = naturalReturn(ps);
+  const cell = (b, n) => n ? `<b>${b}</b>/${n}人<small class="pct">${Math.round(b / n * 100)}%</small>` : '<span style="color:var(--sub)">—</span>';
+  const ct = l => cell(l.filter(r => r.back).length, l.length);
+  const early = recs.filter(r => r.gap < 14);
+  return `<details class="card sum gapbox" data-g="gap"${state.open.gap !== false ? ' open' : ''}><summary><h2>空いた期間ごとの戻りやすさ<span class="oc">${state.open.gap !== false ? '閉じる' : '開く'}</span></h2></summary>
+    <p>最後の来院からどのくらい空いた人が、そこから${CT_WINDOW}日以内に戻ったかです。「何もしなくても」は、これまでの来院データから、回数券が残っているのに次の予約を取らずに帰り、その日数まで来なかった人（LINE・手紙を送らなかった人）を数えています。LINE・手紙は、送ったときに空いていた日数で分けています（これまでの全記録）。</p>
+    <div style="overflow-x:auto"><table class="cttbl gaptbl"><tr><th>空いた期間</th><th class="r">何もしなくても</th><th class="r">LINE</th><th class="r">手紙</th></tr>
+    ${early.length ? `<tr><td>2週間未満</td><td class="r"><span style="color:var(--sub)">—</span></td><td class="r">${ct(early.filter(r => r.m === 'line'))}</td><td class="r">${ct(early.filter(r => r.m === 'letter'))}</td></tr>` : ''}
+    ${GAP_BINS.map(([a, b, l], k) => { const l2 = recs.filter(r => r.gap >= a && r.gap < b); return `<tr><td>${l}</td><td class="r">${cell(nat[k].b, nat[k].n)}</td><td class="r">${ct(l2.filter(r => r.m === 'line'))}</td><td class="r">${ct(l2.filter(r => r.m === 'letter'))}</td></tr>`; }).join('')}</table></div>
+    <p class="note" style="margin-top:8px">見かた：「何もしなくても」の割合が大きく下がる期間までに声をかけるのが目安です。LINE・手紙の割合が「何もしなくても」より高いほど、声かけが効いています。LINE・手紙は人数が少ないうちは割合が大きく動くので、人数とあわせて見てください。</p></details>`;
+}
 function viewFollow() {
   const all = scoped();
   if (state.dbState === 'loading' || !model.counts.res) return emptyHTML();
@@ -1363,7 +1402,7 @@ function viewFollow() {
     else if (state.storeList.length && !state.store) h += storeTable();
   }
   if (state.single) h += staffTable(); // 担当者を選んでいるときは、その人だけのまとめ
-  h += contactTable();
+  h += contactTable() + gapTable();
   if (!all.length) return h + emptyHTML();
   for (const g of GROUPS) {
     const rows = all.filter(p => p.status === g.k).sort(sorter);

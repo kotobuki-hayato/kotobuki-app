@@ -134,7 +134,7 @@ button:disabled,input:disabled{opacity:.55;cursor:not-allowed}
 .lrow[data-id]:hover{background:var(--sunken)}
 .lrow.alert{background:var(--shu-weak)} .lrow.alert:hover{background:color-mix(in srgb,var(--shu-weak) 85%,var(--shu))}
 .alertsw{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--shu-weak);box-shadow:inset 0 0 0 1px var(--shu);vertical-align:-2px;margin-right:6px}
-.lrow.hasact{grid-template-columns:minmax(150px,1.3fr) 104px 104px 96px minmax(170px,2fr) 156px}
+.lrow.hasact{grid-template-columns:minmax(150px,1.3fr) 104px 104px 96px minmax(170px,2fr) 212px}
 .acts.in-who{display:none} .acts.at-end{justify-content:flex-end} .lrow.head .acth{text-align:right}
 .nmbox{min-width:0;display:block;flex:0 1 auto}
 .lrow.hasact .nmbox .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -290,6 +290,8 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .sumtbl th.sub,.sumtbl td.sub{font-size:13px} .sumtbl th.sub{color:var(--sub);font-weight:400} .sumtbl th.grp,.sumtbl td.grp{border-left:2px solid var(--line)} .sumtbl td.sub:last-of-type{} 
 #dlg .back{display:block;margin:0 0 6px;font-size:14px}
 .gapbox summary{cursor:pointer;list-style:none} .gapbox summary::-webkit-details-marker{display:none} .gapbox summary h2{display:flex;align-items:center;gap:8px} .gapbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .gapbox[open] summary h2::before{transform:rotate(90deg)} .gapbox .oc{margin-left:auto;font-size:14px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
+.hidebtn{border:1px solid var(--line);background:var(--surface);color:var(--sub);border-radius:8px;padding:6px 10px;min-height:36px;font-size:12px;cursor:pointer;white-space:nowrap} .hidebtn:hover{color:var(--ink);border-color:var(--sub)}
+.group.s-hidden .dot{background:var(--line)} .lrow.hrow{grid-template-columns:minmax(0,2.2fr) 1fr 1fr auto}
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -644,7 +646,7 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       p.status = booking ? 'ok' : 'none';
     }
     /* 予約がないまま長く来ていない人は、要フォローとは別に分ける */
-    if (last && !booking && asOfP - last.day >= st.awayDays && (p.status === 'ended' || p.status === 'cancelled' || p.status === 'nobook')) { p.was = p.status; p.status = 'away'; p.renewSoon = false; }
+    if (last && !booking && asOfP - last.day >= st.awayDays && (p.status === 'cancelled' || p.status === 'nobook')) { p.was = p.status; p.status = 'away'; p.renewSoon = false; }
     patients.push(p);
   }
 
@@ -699,7 +701,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/17-1';
+const APP_VER = '10/17-2';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -713,7 +715,7 @@ const ymd = n => { const d = dayToDate(n); return `${d.getUTCFullYear()}/${d.get
 let data = emptyData(), model;
 const state = { tab: 'follow', staff: '', store: '', area: '', areas: [], asOfByStore: {}, single: '', storeList: [], calMode: 'attn', open: {}, month: null, asOf: todayDay(),
   settings: Object.assign({}, DEFAULT_SETTINGS), pace: {}, loadMsg: '', openId: null,
-  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, renewCall: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
+  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, renewCall: {}, hidden: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
 
 /* ---- LINE・手紙の記録 ----
    院ごとに1つの文書（contacts/s-xxxx）に、{ p: { 顧客ID: [{d:'YYYY-MM-DD', m:'line'|'letter'}] } } で残す */
@@ -864,6 +866,13 @@ function saveContacts(p, list, msg, undo) {
     .then(() => flash(msg || '記録しました。', undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
   for (const o of Object.keys(contactsBy)) if (o !== s && Array.isArray(contactsBy[o][p.id]) && contactsBy[o][p.id].length) enqueue(() => FB.set('contacts/' + o, { p: { [p.id]: [] } }, true).catch(() => {})); // ほかの院に残っている古い記録は空にする（転院した人）
 }
+function saveHide(p, d, msg, undo) {
+  if (d) state.hidden[p.id] = d; else delete state.hidden[p.id];
+  rebuild();
+  enqueue(() => FB.set('contacts/' + sid(p.store), { h: { [p.id]: d } }, true)
+    .then(() => flash(msg, undo), () => { flash('保存できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
+  if (!d) for (const o of Object.keys(hideBy)) if (o !== sid(p.store) && hideBy[o][p.id]) enqueue(() => FB.set('contacts/' + o, { h: { [p.id]: '' } }, true).catch(() => {}));
+}
 function saveCall(p, d, msg, undo) {
   if (d) state.renewCall[p.id] = d; else delete state.renewCall[p.id];
   rebuild();
@@ -896,14 +905,15 @@ function savePace(id, days) {
 }
 
 /* 院ごとの LINE・手紙 と 来院ペース を1つにまとめる */
-const contactsBy = {}, paceBy = {}, callsBy = {};
+const contactsBy = {}, paceBy = {}, callsBy = {}, hideBy = {};
 function mergeSide() {
   const c = {}, p = {};
   for (const s of Object.keys(contactsBy)) for (const k of Object.keys(contactsBy[s])) if (Array.isArray(contactsBy[s][k])) c[k] = (c[k] || []).concat(contactsBy[s][k]);
   for (const k of Object.keys(c)) c[k] = uniqCt(c[k]);
   for (const s of Object.keys(paceBy)) Object.assign(p, paceBy[s]);
   const rc = {}; for (const s of Object.keys(callsBy)) for (const k of Object.keys(callsBy[s])) if (callsBy[s][k] && (!rc[k] || callsBy[s][k] > rc[k])) rc[k] = callsBy[s][k];
-  state.contacts = c; state.pace = p; state.renewCall = rc;
+  const hd = {}; for (const s of Object.keys(hideBy)) for (const k of Object.keys(hideBy[s])) if (hideBy[s][k] && (!hd[k] || hideBy[s][k] > hd[k])) hd[k] = hideBy[s][k];
+  state.contacts = c; state.pace = p; state.renewCall = rc; state.hidden = hd;
 }
 
 /* ---- ログインと読み込み ---- */
@@ -911,7 +921,7 @@ let unsubs = [];
 const watched = new Set();
 function watchStore(s) {
   if (watched.has(s)) return; watched.add(s);
-  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; callsBy[s] = (x && x.r) || {}; mergeSide(); rebuild(); }, () => {}));
+  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; callsBy[s] = (x && x.r) || {}; hideBy[s] = (x && x.h) || {}; mergeSide(); rebuild(); }, () => {}));
   unsubs.push(FB.watch('pace/' + s, (x, pending) => { if (pending) return; paceBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
 }
 function onMetas(list, first) {
@@ -1079,7 +1089,7 @@ const GROUPS = [
   { k: 'late', title: '予約はあるが、間隔が空きすぎの患者さん', help: '次の予約が、目安のペースより先の日付になっています。', open: true },
   { k: 'ok', title: '順調な患者さん', help: '目安のペースどおりに次の予約が入っています。', open: false },
   { k: 'ended', title: '更新せずに終わった患者さん', help: '回数券が終了したあと、新しい回数券の購入記録がありません。要フォローの人数には入れていません。', open: false },
-  { k: 'away', title: 'しばらく来ていない患者さん', help: '最後の来院から{n}日以上たっていて、次の予約がありません。要フォローの人数には入れていません。回数券の残りで分けて、最近まで来ていた順に並べています。', open: false },
+  { k: 'away', title: 'しばらく来ていない患者さん', help: '回数券が残っているのに、最後の来院から{n}日以上たっていて、次の予約がありません。要フォローの人数には入れていません。回数券の残りで分けて、最近まで来ていた順に並べています。', open: false },
 ];
 /* ---- エリアと院 ---- */
 const NO_AREA = 'エリア未設定';
@@ -1111,7 +1121,10 @@ const tanto = p => (state.single ? '' : shortStore(p.store) + '　') + '担当 '
 let wantArea = null; try { wantArea = localStorage.getItem('raiin-area'); } catch (e) { /* 保存領域が使えない環境では毎回「全エリア」から始まる */ }
 function rememberArea() { try { localStorage.setItem('raiin-area', state.area); } catch (e) { /* 覚えられなくても画面は動く */ } }
 
-const visible = () => model.patients.filter(p => p.last && p.tracked && inArea(p.store, state.area) && (!state.store || p.store === state.store));
+/* 外した患者さん：外した日より後に来院があれば、自動で元に戻る */
+const isHidden = p => { const d = state.hidden[p.id]; return !!d && !p.visits.some(v => v.day > toDay(d)); };
+const visibleAll = () => model.patients.filter(p => p.last && p.tracked && inArea(p.store, state.area) && (!state.store || p.store === state.store));
+const visible = () => visibleAll().filter(p => !isHidden(p));
 const scoped = () => visible().filter(p => !state.staff || p.staff === state.staff);
 const BY_LAST = ['ended', 'cancelled', 'nobook']; // 予約がない人は、最後の来院が古い順
 const sorter = (a, b) => (SEVERITY[a.status] - SEVERITY[b.status]) || (a.status === 'away' ? b.last.day - a.last.day : 0) || (BY_LAST.includes(a.status) ? a.last.day - b.last.day : 0) || ((b.overdue || 0) - (a.overdue || 0)) || (a.last.day - b.last.day);
@@ -1143,7 +1156,7 @@ function detail(p) {
 /* ---- 上部 ---- */
 function renderChrome() {
   areaMemo.clear();
-  const all = model.patients.filter(p => p.last && p.tracked), dataStores = model.stores;
+  const all = model.patients.filter(p => p.last && p.tracked && !isHidden(p)), dataStores = model.stores;
   const hasAreas = state.areas.length > 0, attn = ps => ps.filter(p => ATTN.includes(p.status)).length;
   const areaNames = state.areas.map(a => a.name);
   if (hasAreas && dataStores.some(s => !areaOf(s))) areaNames.push(NO_AREA);
@@ -1220,7 +1233,7 @@ function critHTML() {
     <tr><th colspan="2">要フォローに数えない</th></tr>
     <tr><td><span class="n s-ok">${LABEL.ok}</span></td><td>次の予約が、目安日から${st.tol}日以内に入っている</td></tr>
     <tr><td><span class="n s-ended">${LABEL.ended}</span></td><td>回数券が終了していて、新しい回数券の購入記録がない</td></tr>
-    <tr><td><span class="n s-away">${LABEL.away}</span></td><td>最後の来院から${st.awayDays}日以上たっていて、次の予約がない</td></tr>
+    <tr><td><span class="n s-away">${LABEL.away}</span></td><td>回数券が残っているのに、最後の来院から${st.awayDays}日以上たっていて、次の予約がない（回数券が終わっている人は「${LABEL.ended}」のまま）</td></tr>
   </table>
   <p class="note" style="margin:10px 0 0;max-width:none"><span class="alertsw"></span>最後の来院から${st.alertDays}日以上たっていて次の予約がない人は、一覧の行を薄い赤で表示します。</p>
   <p class="note" style="margin:6px 0 0;max-width:none">目安日は「最後の来院日＋その人の来院ペース」です。来院ペースは、初めての回数券なら${st.b1}回目まで${st.d1}日ごと、${st.b2}回目まで${st.d2}日ごと、それ以降は${st.d3}日ごと。更新した回数券は更新前の来院間隔、データより前に買った人はこれまでの来院間隔に合わせます。患者さんの詳細で個別に選んだ場合は、そのペースを使います。</p>`;
@@ -1265,7 +1278,7 @@ function openList(i) {
   const dlg = $('#dlg'); if (!dlg.open) dlg.showModal(); dlg.scrollTop = 0;
 }
 function areaTable() {
-  const all = model.patients.filter(p => p.last && p.tracked), names = state.areas.map(a => a.name);
+  const all = model.patients.filter(p => p.last && p.tracked && !isHidden(p)), names = state.areas.map(a => a.name);
   if (model.stores.some(s => !areaOf(s))) names.push(NO_AREA);
   const rows = names.map(n => {
     const wd = model.stores.filter(s => inArea(s, n)), conf = (state.areas.find(a => a.name === n) || { stores: wd }).stores.length;
@@ -1293,7 +1306,7 @@ function staffTable() {
 const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者さん</span><span>回数券</span><span>最後の来院</span><span>次回予約</span><span>状況</span>${ct ? '<span class="acth">今日送った</span>' : ''}</div>`;
 function rowHTML(p, ct) {
   const today = dayISO(todayDay()), list = ct ? contactsOf(p) : [], lock = state.canWrite ? '' : ' disabled';
-  const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const on = list.some(c => c.d === today && c.m === m); return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${on ? '今日の記録を取り消す' : '今日送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}</button>`; }).join('')}</span>`;
+  const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const on = list.some(c => c.d === today && c.m === m); return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${on ? '今日の記録を取り消す' : '今日送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}</button>`; }).join('')}<button class="hidebtn" data-hide="${esc(p.id)}"${lock} title="要フォローの一覧から外す">外す</button></span>`;
   const alert = !p.booking && ['cancelled', 'nobook', 'away'].includes(p.status) && p.asOf - p.last.day >= model.settings.alertDays; // 予約がなく長く空いている人は薄い赤
   return `<div class="lrow s-${p.status}${ct ? ' hasact' : ''}${alert ? ' alert' : ''}" data-id="${esc(p.id)}" role="button" tabindex="0">
     <span class="who"><i class="dot"></i><span class="nmbox"><span class="nm" style="display:block">${esc(pname(p))}</span><small>${esc(tanto(p))}</small></span>${acts.replace('class="acts"', 'class="acts in-who"')}</span>
@@ -1331,7 +1344,7 @@ const waiting = (p, c) => !settled(p, c) && !visitedWithin(p, c);
 const ymOf = d => dayISO(d).slice(0, 7); // 'YYYY-MM'
 const ymLabel = ym => `${+ym.slice(0, 4)}年${+ym.slice(5)}月`;
 function contactTable() {
-  const ps = visible(), recs = [];
+  const ps = visibleAll(), recs = [];
   for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d); recs.push({ p, c, ym: ymOf(d), g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
   if (!recs.length) return '';
   const months = [...new Set(recs.map(r => r.ym))].sort().reverse();
@@ -1378,7 +1391,7 @@ function naturalReturn(ps) {
   return out;
 }
 function gapTable() {
-  const ps = visible(); if (!ps.length) return '';
+  const ps = visibleAll(); if (!ps.length) return '';
   const recs = [];
   for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d), lv = p.visits.filter(v => v.day <= d).pop(); if (!lv) continue; recs.push({ gap: d - lv.day, back: cameBack(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
   const nat = naturalReturn(ps);
@@ -1421,12 +1434,14 @@ function viewFollow() {
       const parts = [
         ['回数券が残っている人', '回数券を買ったまま、途中で来なくなっています。', shown.filter(p => !done(p) && p.remaining !== null)],
         ['回数券の残りが分からない人', '購入がデータより前のため、残り回数を数えられません。', shown.filter(p => !done(p) && p.remaining === null)],
-        ['回数券が終了している人', '回数券を終えたあと、更新せずに来なくなっています。', shown.filter(p => done(p))],
       ].filter(x => x[2].length);
       body = fbar + (parts.length ? '' : emptyMsg) + parts.map(x => `<h3 class="sub">${x[0]} <b>${x[2].length}人</b><small>${x[1]}</small></h3><div class="list">${head}${x[2].map(p => rowHTML(p, true)).join('')}</div>`).join('');
     } else body = fbar + (shown.length ? `<div class="list">${head}${shown.map(p => rowHTML(p, canCt)).join('')}</div>` : emptyMsg);
     h += `<details class="group s-${g.k}" data-g="${g.k}"${open ? ' open' : ''}><summary><i class="dot"></i><span class="gt">${g.title}</span><b>${shown.length !== rows.length ? `${shown.length}人<i class="of"> / ${rows.length}人中</i>` : `${rows.length}人`}</b><small>${g.help.replace('{n}', model.settings.awayDays)}</small></summary>${body}</details>`;
   }
+  const hid = visibleAll().filter(isHidden).filter(p => !state.staff || p.staff === state.staff).sort((a, b) => b.last.day - a.last.day);
+  if (hid.length) h += `<details class="group s-hidden" data-g="hidden"${state.open.hidden ? ' open' : ''}><summary><i class="dot"></i><span class="gt">外した患者さん</span><b>${hid.length}人</b><small>「外す」を押した患者さんです。要フォローなどの人数には入れていません。また来院すると、自動でもとの一覧に戻ります。</small></summary>
+    <div class="list">${hid.map(p => `<div class="lrow hrow" data-id="${esc(p.id)}" role="button" tabindex="0"><span class="who"><span class="nmbox"><span class="nm" style="display:block">${esc(pname(p))}</span><small>${esc(tanto(p))}</small></span></span><span><span class="tag">${esc(ticketText(p))}</span></span><span>最後の来院 ${md(p.last.day)}</span><span class="acts" style="display:flex"><button class="hidebtn" data-unhide="${esc(p.id)}">戻す</button></span></div>`).join('')}</div></details>`;
   return h;
 }
 
@@ -1537,6 +1552,11 @@ function viewRenew() {
       soon.map(p => { const c = callOf(p); return `<div class="crow"><button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button><button class="tick" data-call="${esc(p.id)}" aria-pressed="${!!c}"><i></i>${c ? `声かけ済み ${md(toDay(c))}` : '声かけ済み'}</button></div>`; }).join('') + '</div></details>';
   }
   return top;
+}
+function toggleHide(id, on) {
+  const p = model.patients.find(q => q.id === id); if (!p) return;
+  const before = state.hidden[p.id] || '';
+  saveHide(p, on ? dayISO(todayDay()) : '', `${pname(p)}さんを${on ? '一覧から外しました' : 'もとの一覧に戻しました'}`, () => saveHide(p, before, '元に戻しました。'));
 }
 function toggleCall(id) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
@@ -1723,7 +1743,7 @@ function openPatient(id, keep) {
       ${state.canWrite ? '' : '<p class="note">このアカウントは「見るだけ」の権限なので、記録できません。</p>'}`;
   }
   $('#dlg').innerHTML = `${state.fromList !== null && state.fromList !== undefined && plists[state.fromList] ? '<button class="lk back" data-act="backList">← 一覧に戻る</button>' : ''}<div class="dh"><div><h2 id="dlgTitle">${esc(pname(p))}</h2><small>${p.name ? '顧客ID ' + esc(p.id) + '　' : ''}${esc(tanto(p))}</small><small>${esc(tline)}</small></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
-    <div class="db"><div class="say s-${p.status}"><b>${LABEL[p.status]}</b>　${esc(detail(p))}</div>
+    <div class="db"><div class="say s-${p.status}"><b>${isHidden(p) ? '外した患者さん' : LABEL[p.status]}</b>　${esc(detail(p))}<button class="hidebtn" style="margin-left:10px" data-${isHidden(p) ? 'unhide' : 'hide'}="${esc(p.id)}">${isHidden(p) ? 'もとの一覧に戻す' : '一覧から外す'}</button></div>
     ${ctHTML}${paceHTML}<h3>カレンダー</h3>${calendarsHTML(p)}
     <div class="cols2"><div><h3>来院の記録</h3><table><tr><th>日付</th><th>内容</th><th class="r">前回から</th></tr>${hist}</table></div>
     <div><h3>この先の目安</h3>${plan}</div></div></div>`;
@@ -1900,9 +1920,11 @@ function render() {
   if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-hide],[data-unhide],[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.plist !== undefined) openList(Number(d.plist));
+  if (d.hide) toggleHide(d.hide, true);
+  else if (d.unhide) toggleHide(d.unhide, false);
+  else if (d.plist !== undefined) openList(Number(d.plist));
   else if (d.call) toggleCall(d.call);
   else if (d.ctmonth) { state.ctMonth = d.ctmonth; render(); }
   else if (d.tab) { state.tab = d.tab; renderChrome(); render(); window.scrollTo(0, 0); }

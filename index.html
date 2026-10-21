@@ -134,7 +134,7 @@ button:disabled,input:disabled{opacity:.55;cursor:not-allowed}
 .lrow[data-id]:hover{background:var(--sunken)}
 .lrow.alert{background:var(--shu-weak)} .lrow.alert:hover{background:color-mix(in srgb,var(--shu-weak) 85%,var(--shu))}
 .alertsw{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--shu-weak);box-shadow:inset 0 0 0 1px var(--shu);vertical-align:-2px;margin-right:6px}
-.lrow.hasact{grid-template-columns:minmax(150px,1.3fr) 104px 104px 96px minmax(170px,2fr) 212px}
+.lrow.hasact{grid-template-columns:minmax(150px,1.3fr) 104px 104px 96px minmax(170px,2fr) 252px}
 .acts.in-who{display:none} .acts.at-end{justify-content:flex-end} .lrow.head .acth{text-align:right}
 .nmbox{min-width:0;display:block;flex:0 1 auto}
 .lrow.hasact .nmbox .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -292,6 +292,7 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .gapbox summary{cursor:pointer;list-style:none} .gapbox summary::-webkit-details-marker{display:none} .gapbox summary h2{display:flex;align-items:center;gap:8px} .gapbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .gapbox[open] summary h2::before{transform:rotate(90deg)} .gapbox .oc{margin-left:auto;font-size:14px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .hidebtn{border:1px solid var(--line);background:var(--surface);color:var(--sub);border-radius:8px;padding:6px 10px;min-height:36px;font-size:12px;cursor:pointer;white-space:nowrap} .hidebtn:hover{color:var(--ink);border-color:var(--sub)}
 .group.s-hidden .dot{background:var(--line)} .lrow.hrow{grid-template-columns:minmax(0,2.2fr) 1fr 1fr auto}
+.tick .tkd{font-weight:400;font-size:11px;margin-left:2px;opacity:.85}
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -701,7 +702,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/17-3';
+const APP_VER = '10/21-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -725,6 +726,18 @@ const contactsOf = p => (state.contacts[p.id] || []).filter(c => c && toDay(c.d)
 const lastContact = p => { const l = contactsOf(p); return l.length ? l.reduce((a, b) => (a.d >= b.d ? a : b)) : null; };
 const contactedSinceVisit = p => { const c = lastContact(p); return c && p.last && toDay(c.d) >= p.last.day ? c : null; };
 const cameAfter = (p, c) => p.visits.some(v => v.day > toDay(c.d));
+/* 送ってから30日以内の同じ方法の記録（チェックはこの間ずっと付いたまま） */
+const recentSent = (p, m) => contactsOf(p).filter(c => c.m === m && todayDay() - toDay(c.d) < 30 && todayDay() - toDay(c.d) >= 0).sort((a, b) => b.d.localeCompare(a.d))[0] || null;
+/* 集計に使う記録：同じ人に同じ方法で、前に数えた記録から30日以内に送ったものは、まとめて1回と数える */
+function countedContacts(p) {
+  const kept = [], last = {};
+  for (const c of contactsOf(p).slice().sort((a, b) => a.d.localeCompare(b.d))) {
+    const d = toDay(c.d), m = c.m === 'letter' ? 'letter' : 'line';
+    if (last[m] !== undefined && d - last[m] < 30) continue;
+    last[m] = d; kept.push(c);
+  }
+  return kept;
+}
 
 
 /* ---- この端末で覚えておくこと（前回見ていた院と担当者） ---- */
@@ -888,9 +901,11 @@ function addContact(id, m) {
 /* 一覧のチェック：今日の記録をつける／もう一度押すと取り消す。日を変えれば何度でも記録できる */
 function toggleToday(id, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
-  const d = dayISO(todayDay()), before = contactsOf(p), on = before.some(c => c.d === d && c.m === m);
-  const next = on ? before.filter(c => !(c.d === d && c.m === m)) : before.concat([{ d, m, s: p.status }]);
-  saveContacts(p, next, `${pname(p)}さん：${METHOD[m]}を${on ? '取り消しました' : '記録しました'}`, () => saveContacts(p, before, '元に戻しました。'));
+  const d = dayISO(todayDay()), before = contactsOf(p);
+  if (before.some(c => c.d === d && c.m === m)) { saveContacts(p, before.filter(c => !(c.d === d && c.m === m)), `${pname(p)}さん：${METHOD[m]}を取り消しました`, () => saveContacts(p, before, '元に戻しました。')); return; } // 今日つけたものは、押し直すと取り消せる
+  const recent = recentSent(p, m);
+  if (recent) { flash(`${pname(p)}さんには ${md(toDay(recent.d))} に${METHOD[m]}を送っています。チェックは送ってから${CT_WINDOW}日たつと外れ、また付けられます。`); return; }
+  saveContacts(p, before.concat([{ d, m, s: p.status }]), `${pname(p)}さん：${METHOD[m]}を記録しました`, () => saveContacts(p, before, '元に戻しました。'));
 }
 function removeContact(id, d, m) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
@@ -1303,10 +1318,10 @@ function staffTable() {
   return sumTable(`${state.storeList.length || state.areas.length ? esc(shortStore(state.single)) + 'の' : ''}スタッフ別のまとめ`, '担当している回数券の患者さんの人数です。名前を押すと、そのスタッフの患者さんだけに切り替わります。', '担当', '',
     staffs.map(s => ({ cell: `<button class="lk" data-staff="${esc(s)}">${esc(s)}</button>`, label: s + 'さんの', ps: tk.filter(p => p.staff === s) })), tk);
 }
-const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者さん</span><span>回数券</span><span>最後の来院</span><span>次回予約</span><span>状況</span>${ct ? '<span class="acth">今日送った</span>' : ''}</div>`;
+const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者さん</span><span>回数券</span><span>最後の来院</span><span>次回予約</span><span>状況</span>${ct ? '<span class="acth">送った（30日間）</span>' : ''}</div>`;
 function rowHTML(p, ct) {
   const today = dayISO(todayDay()), list = ct ? contactsOf(p) : [], lock = state.canWrite ? '' : ' disabled';
-  const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const on = list.some(c => c.d === today && c.m === m); return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${on ? '今日の記録を取り消す' : '今日送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}</button>`; }).join('')}<button class="hidebtn" data-hide="${esc(p.id)}"${lock} title="要フォローの一覧から外す">外す</button></span>`;
+  const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const r = recentSent(p, m), on = !!r, isToday = !!r && r.d === today; return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${isToday ? '今日の記録を取り消す' : on ? md(toDay(r.d)) + 'に送信済み' : '送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}${on && !isToday ? `<small class="tkd">${md(toDay(r.d))}</small>` : ''}</button>`; }).join('')}<button class="hidebtn" data-hide="${esc(p.id)}"${lock} title="要フォローの一覧から外す">外す</button></span>`;
   const alert = !p.booking && ['cancelled', 'nobook', 'away'].includes(p.status) && p.asOf - p.last.day >= model.settings.alertDays; // 予約がなく長く空いている人は薄い赤
   return `<div class="lrow s-${p.status}${ct ? ' hasact' : ''}${alert ? ' alert' : ''}" data-id="${esc(p.id)}" role="button" tabindex="0">
     <span class="who"><i class="dot"></i><span class="nmbox"><span class="nm" style="display:block">${esc(pname(p))}</span><small>${esc(tanto(p))}</small></span>${acts.replace('class="acts"', 'class="acts in-who"')}</span>
@@ -1345,7 +1360,7 @@ const ymOf = d => dayISO(d).slice(0, 7); // 'YYYY-MM'
 const ymLabel = ym => `${+ym.slice(0, 4)}年${+ym.slice(5)}月`;
 function contactTable() {
   const ps = visibleAll(), recs = [];
-  for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d); recs.push({ p, c, ym: ymOf(d), g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
+  for (const p of ps) for (const c of countedContacts(p)) { const d = toDay(c.d); recs.push({ p, c, ym: ymOf(d), g: statusAt(p, c), back: cameBack(p, c), wait: waiting(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
   if (!recs.length) return '';
   const months = [...new Set(recs.map(r => r.ym))].sort().reverse();
   if (!state.ctMonth || !months.includes(state.ctMonth)) state.ctMonth = months[0];
@@ -1357,7 +1372,7 @@ function contactTable() {
   const byKey = new Map(); for (const r of sel) { const k = state.single ? r.p.staff : shortStore(r.p.store); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(r); }
   const nWait = sel.filter(r => r.wait).length, nWaitAll = recs.filter(r => r.wait).length;
   const shown = months.slice(0, 12);
-  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>送った月ごとに、<b>戻った人／送った人</b>を数えています。「戻った」は、送ってから${CT_WINDOW}日以内に来院した人です。${CT_WINDOW}日たつまでは結果待ちで、次の予約が入っていれば仮に数えます。${CT_WINDOW}日たつと確定し、そのあとは変わりません。来院と予約はCSVを入れると反映されます。</p>
+  return `<div class="card sum"><h2>LINE・手紙の結果</h2><p>送った月ごとに、<b>戻った人／送った人</b>を数えています。同じ人に同じ方法で30日以内に何度送っても、1回と数えます。「戻った」は、送ってから${CT_WINDOW}日以内に来院した人です。${CT_WINDOW}日たつまでは結果待ちで、次の予約が入っていれば仮に数えます。${CT_WINDOW}日たつと確定し、そのあとは変わりません。来院と予約はCSVを入れると反映されます。</p>
     <h3 class="cth">月ごと</h3>
     <div style="overflow-x:auto"><table class="cttbl">${head('送った月')}${shown.map(ym => row(`<button class="lk" data-ctmonth="${ym}">${ymLabel(ym)}</button>${recs.some(r => r.ym === ym && r.wait) ? ' <small style="color:var(--sub)">結果待ちあり</small>' : ''}`, recs.filter(r => r.ym === ym))).join('')}${shown.length > 1 ? row('<b>合計</b>', recs.filter(r => shown.includes(r.ym))) : ''}</table></div>
     <div class="ctmonths" role="group" aria-label="内訳を見る月">${shown.map(ym => `<button class="chip" data-ctmonth="${ym}" aria-pressed="${ym === state.ctMonth}">${ymLabel(ym)}</button>`).join('')}</div>
@@ -1393,7 +1408,7 @@ function naturalReturn(ps) {
 function gapTable() {
   const ps = visibleAll(); if (!ps.length) return '';
   const recs = [];
-  for (const p of ps) for (const c of contactsOf(p)) { const d = toDay(c.d), lv = p.visits.filter(v => v.day <= d).pop(); if (!lv) continue; recs.push({ gap: d - lv.day, back: cameBack(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
+  for (const p of ps) for (const c of countedContacts(p)) { const d = toDay(c.d), lv = p.visits.filter(v => v.day <= d).pop(); if (!lv) continue; recs.push({ gap: d - lv.day, back: cameBack(p, c), m: c.m === 'letter' ? 'letter' : 'line' }); }
   const cell = (b, n) => n ? `<b>${b}</b>/${n}人<small class="pct">${Math.round(b / n * 100)}%</small>` : '<span style="color:var(--sub)">—</span>';
   const ct = l => cell(l.filter(r => r.back).length, l.length);
   const early = recs.filter(r => r.gap < 14);

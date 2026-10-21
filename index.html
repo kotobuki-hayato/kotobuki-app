@@ -702,7 +702,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/21-1';
+const APP_VER = '10/21-2';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1646,6 +1646,8 @@ function viewSet() {
     </div>
     ${adm ? '<p style="margin:12px 0 0"><button class="btn ghost" data-act="resetSet">目安を初期値に戻す</button></p>' : ''}
   </div>
+  ${adm ? (() => { const n = model.patients.reduce((a, p) => a + contactsOf(p).length - countedContacts(p).length, 0); return `<div class="card"><h2>LINE・手紙の重複</h2><p>同じ患者さんに同じ方法で、30日以内に2回以上チェックが付いている記録です。いちばん古い記録を残して、ほかを消します。</p>
+    ${n ? `<p><b>${n}件</b>見つかりました。</p><p><button class="btn" data-act="dedupeCt">重複を整理する</button></p>` : '<p style="color:var(--sub)">重複はありません。</p>'}</div>`; })() : ''}
   <div class="card"><h2>回数券の金額</h2><p>「更新見込み」の売上見込みに使います。同じ回数券で更新した場合の金額です。</p>
     <table class="prices">${(() => { const pr = Object.assign({}, DEFAULT_PRICES, s.prices || {}); const types = [...new Set(Object.keys(pr).concat(model.patients.filter(p => p.tk && p.tk.known && /^[A-Z]+\d+$/.test(p.tk.type)).map(p => p.tk.type)))].sort((a, b) => a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, '')) || parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, ''))); return types.map(t => `<tr><td>${esc(t)}</td><td class="r">¥ <input type="number" inputmode="numeric" min="0" step="500" value="${pr[t] || ''}" data-price="${esc(t)}" aria-label="${esc(t)}の金額" placeholder="未設定"${dis}></td></tr>`).join(''); })()}</table>
   </div>
@@ -1956,6 +1958,11 @@ document.addEventListener('click', e => {
   else if (d.id) openPatient(d.id);
   else if (d.act === 'close') { $('#dlg').close(); state.openId = null; state.fromList = null; }
   else if (d.act === 'backList') { openList(state.fromList); }
+  else if (d.act === 'dedupeCt') {
+    const ps = model.patients.filter(p => contactsOf(p).length !== countedContacts(p).length), n = ps.reduce((a, p) => a + contactsOf(p).length - countedContacts(p).length, 0);
+    if (!ps.length || !confirm(`${ps.length}人分、${n}件の重複した記録を消します。よろしいですか？`)) return;
+    for (const p of ps) saveContacts(p, countedContacts(p).map(c => Object.assign({}, c)), `重複を整理しました（${n}件）。`);
+  }
   else if (d.act === 'undo') { const u = state.undo; state.undo = null; if (u) u(); }
   else if (d.act === 'saveAreas') {
     const list = parseAreas($('#areasText').value);

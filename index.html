@@ -702,7 +702,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/21-2';
+const APP_VER = '10/24-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1101,10 +1101,10 @@ const ATTN = ['cancelled', 'nobook', 'late']; // 要フォローに数える状�
 const GROUPS = [
   { k: 'cancelled', title: '予約をキャンセルしたままの患者さん', help: '次の予約をキャンセルしたあと、取り直していません。', open: true },
   { k: 'nobook', title: '次回予約が入っていない患者さん', help: '回数券が残っているのに、次の予約がありません。最後の来院から日数が経っている順です。', open: true },
+  { k: 'away', title: 'しばらく来ていない患者さん', help: '回数券が残っているのに、最後の来院から{n}日以上たっていて、次の予約がありません。要フォローの人数には入れていません。回数券の残りで分けて、最近まで来ていた順に並べています。', open: true },
   { k: 'late', title: '予約はあるが、間隔が空きすぎの患者さん', help: '次の予約が、目安のペースより先の日付になっています。', open: true },
   { k: 'ok', title: '順調な患者さん', help: '目安のペースどおりに次の予約が入っています。', open: false },
   { k: 'ended', title: '更新せずに終わった患者さん', help: '回数券が終了したあと、新しい回数券の購入記録がありません。要フォローの人数には入れていません。', open: false },
-  { k: 'away', title: 'しばらく来ていない患者さん', help: '回数券が残っているのに、最後の来院から{n}日以上たっていて、次の予約がありません。要フォローの人数には入れていません。回数券の残りで分けて、最近まで来ていた順に並べています。', open: false },
 ];
 /* ---- エリアと院 ---- */
 const NO_AREA = 'エリア未設定';

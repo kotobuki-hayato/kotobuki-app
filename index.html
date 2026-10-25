@@ -297,6 +297,7 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .plantbl{width:100%;min-width:900px;border-collapse:collapse;font-size:13px} .plantbl th{font-size:12px;color:var(--sub);font-weight:400;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)} .plantbl td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:middle} .plantbl td small{color:var(--sub)} .plantbl .r{text-align:right;white-space:nowrap}
 .plantbl select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-height:34px;font-size:13px;color:var(--ink)} .plantbl .why{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-width:220px} .plantbl .why input{flex:1;min-width:110px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-height:34px;font-size:13px;color:var(--ink)} .plantbl .lk.nm{font-weight:700;text-decoration:none;color:var(--ink)}
 .addtag{display:inline-block;font-size:11px;padding:0 6px;border-radius:999px;background:var(--ai-weak);color:var(--ai)}
+.nmck{display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:12px;white-space:nowrap;cursor:pointer} .nmtag{background:var(--yamabuki-weak);color:var(--yamabuki)}
 .addbox{margin:12px 0 4px} .addbox label{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap} .addbox input{flex:1;max-width:320px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:38px;font-size:15px;color:var(--ink)}
 #addres{display:grid;gap:2px;margin-top:6px;max-width:640px} .addhit{text-align:left;background:none;border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13px} .addhit:hover{background:var(--sunken)} .addhit small{color:var(--sub)}
 .outbox{margin-top:10px;font-size:13px} .outbox summary{cursor:pointer;color:var(--sub)}
@@ -709,7 +710,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/25-1';
+const APP_VER = '10/25-2';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -887,7 +888,7 @@ function saveContacts(p, list, msg, undo) {
   for (const o of Object.keys(contactsBy)) if (o !== s && Array.isArray(contactsBy[o][p.id]) && contactsBy[o][p.id].length) enqueue(() => FB.set('contacts/' + o, { p: { [p.id]: [] } }, true).catch(() => {})); // ほかの院に残っている古い記録は空にする（転院した人）
 }
 function savePlan(p, key, obj, quiet, msg, undo) {
-  state.plans[key] = obj; if (!quiet) rebuild();
+  state.plans[key] = obj; if (!quiet) { rebuild(); render(); } // 選んだ欄にカーソルがあっても、人数と金額はすぐ描き直す
   enqueue(() => FB.set('contacts/' + sid(p.store), { u: { [key]: obj } }, true)
     .then(() => flash(msg || `${pname(p)}さん：保存しました`, undo), () => { flash('保存できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
 }
@@ -1570,22 +1571,25 @@ function viewRenew() {
 
   let top = `<p class="guide">この先、いつ・何人の回数券が終了するかと、更新の売上見込みです。月の一覧で、更新の提案予定を選べます。</p>`;
   top += `<div class="card" style="margin-bottom:20px"><h2>回数券が終了する見込みと、更新の売上見込み</h2>
-    <p>今のペースで通った場合に最後の1回が来る月です（過去3か月は、実際に終わった月）。「見込み」は全員が同じ回数券で更新した場合に更新率をかけた金額、「提案予定」はスタッフが選んだ回数券の合計、「実績」はCSVで分かった実際の入金の合計です。</p>
+    <p>今のペースで通った場合に最後の1回が来る月です（過去3か月は、実際に終わった月）。「見込み」は全員が同じ回数券で更新した場合に更新率をかけた金額、「提案予定」はスタッフが選んだ回数券の合計、「実績」は更新の回数券をその月に買った人の入金の合計です（CSVで分かった分。分割払いは、それまでの入金の合計）。</p>
     <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canManage() ? '' : ' disabled'}> %</label>
       ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
   if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
     const planOf = rs => rs.filter(r => r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none').reduce((a, r) => a + (priceOf(r.plan.t) || 0), 0);
-    const paidOf = rs => rs.filter(r => r.done && r.next).reduce((a, r) => a + (r.next.paid || 0), 0);
+    /* 実績は、更新の回数券を買った月で数える（会社の月の売上と同じ数え方） */
+    const buys = new Map();
+    for (const p of sc) p.tickets.forEach((t, i) => { if (!t.known || t.start === null || !(i > 0 || t.renewal)) return; const k = dayISO(t.start).slice(0, 7); if (!buys.has(k)) buys.set(k, []); buys.get(k).push({ p, t }); });
+    const paidOf = k => (buys.get(k) || []).reduce((a, x) => a + (x.t.paid || 0), 0);
     const sel = months.get(state.month);
     const planned = sel.filter(r => r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none'), tbd = sel.filter(r => r.plan.t === 'tbd'), none = sel.filter(r => r.plan.t === 'none');
-    const won = sel.filter(r => r.done && r.next), paidSum = won.reduce((a, r) => a + (r.next.paid || 0), 0), paidUnknown = won.some(r => r.next.paid === null);
+    const won = buys.get(state.month) || [], paidSum = paidOf(state.month), paidUnknown = won.some(x => x.t.paid === null);
     const planSum = planned.reduce((a, r) => a + (priceOf(r.plan.t) || 0), 0);
     top += `<div class="kv"><span>${mlabel(state.month)}に終了　<b>${sel.length}</b>人</span><span>見込み <b>${yen(sum(sel) * rate / 100)}</b></span><span>提案予定 <b>${yen(planSum)}</b></span><span>実績 <b>${yen(paidSum)}</b>${planSum ? ` <small>（達成率 ${Math.round(paidSum / planSum * 100)}%）</small>` : ''}</span></div>
       <div class="kv kv2"><span>提案　更新予定 <b>${planned.length}</b>人　<small>未定 ${tbd.length}人・更新なし ${none.length}人・まだ選んでいない ${sel.length - planned.length - tbd.length - none.length}人</small></span><span>実績　更新 <b>${won.length}</b>人${paidUnknown ? ' <small>（入金額が分からない人あり）</small>' : ''}</span></div>
       <p class="note" style="margin:2px 0 0">下の月を押すと、その月に切り替わります。</p>`;
     const dash = '<span style="color:var(--sub)">ー</span>';
-    top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>見込み</span><span>提案予定</span><span>実績</span></div>' + keys.map(k => { const rs = months.get(k), pl = planOf(rs), pd = paidOf(rs); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}${k < thisMonth ? ' <small style="color:var(--sub)">済</small>' : ''}</span><span><i style="width:${rs.length / max * 100}%"></i></span><span>${rs.length}人</span><span>${yen(sum(rs) * rate / 100)}</span><span>${pl ? yen(pl) : dash}</span><span><b>${pd ? yen(pd) : dash}</b></span></button>`; }).join('') + '</div>';
+    top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>見込み</span><span>提案予定</span><span>実績</span></div>' + keys.map(k => { const rs = months.get(k), pl = planOf(rs), pd = paidOf(k); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}${k < thisMonth ? ' <small style="color:var(--sub)">済</small>' : ''}</span><span><i style="width:${rs.length / max * 100}%"></i></span><span>${rs.length}人</span><span>${yen(sum(rs) * rate / 100)}</span><span>${pl ? yen(pl) : dash}</span><span><b>${pd ? yen(pd) : dash}</b></span></button>`; }).join('') + '</div>';
     if (noPrice.length) top += `<p class="note" style="margin-top:8px">金額が決まっていない回数券（${noTypes.map(esc).join('・')}）の${noPrice.length}人は、金額に入れていません。${canManage() ? '「設定」の「回数券の金額」で決められます。' : ''}</p>`;
     const rs = sel.slice().sort((a, b) => (a.end === null) - (b.end === null) || a.end - b.end)
     const pr = Object.assign({}, DEFAULT_PRICES, model.settings.prices || {});
@@ -1596,10 +1600,10 @@ function viewRenew() {
     const why = r => showWhy(r) ? `<select data-preason="${esc(r.key)}" data-pid="${esc(r.p.id)}" aria-label="理由"><option value="">理由</option>${PLAN_REASONS.map(x => `<option${r.plan.r === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input type="text" data-pmemo="${esc(r.key)}" data-pid="${esc(r.p.id)}" value="${esc(r.plan.m || '')}" placeholder="メモ" aria-label="メモ">` : '';
     top += `<details class="endlist" data-g="endlist"${state.open.endlist ? ' open' : ''}><summary><h3>${mlabel(state.month)}に回数券が終わる患者さん　<small>${rs.length}人</small><span class="oc">${state.open.endlist ? '閉じる' : '開く'}</span></h3></summary>
       <div style="overflow-x:auto"><table class="plantbl"><tr><th>患者さん</th><th>保持回数券</th><th>終了</th><th>提案予定回数</th><th class="r">金額</th><th>更新</th><th class="r">入金額</th><th>理由</th><th></th></tr>` +
-      rs.map(r => `<tr><td><button class="lk nm" data-id="${esc(r.p.id)}">${esc(pname(r.p))}</button><br><small>${esc(tanto(r.p))}</small></td><td>${esc(r.t.type)}<br><small>${r.done ? '終了' : r.p.remaining !== null ? `残り${r.p.remaining}回` : ''}</small></td><td>${r.end === null ? '<small class="addtag">追加</small>' : md(r.end) + (r.done ? '' : '頃')}${r.plan.a && r.end !== null ? ` <small class="addtag">${r.plan.n ? '前月から' : '移動'}</small>` : ''}</td><td>${planSel(r)}</td><td class="r">${r.plan.t === 'none' ? '¥0' : r.plan.t && priceOf(r.plan.t) ? yen(priceOf(r.plan.t)) : ''}</td><td>${res(r)}</td><td class="r">${r.done && r.next ? (r.next.paid === null ? '<small style="color:var(--sub)">不明</small>' : yen(r.next.paid)) : ''}</td><td><div class="why">${why(r)}</div></td><td><button class="hidebtn" data-pexcl="${esc(r.key)}" data-pid="${esc(r.p.id)}" data-pym="${state.month}" title="この月の一覧から外して、次の月の一覧に回す">外す</button></td></tr>`).join('') + '</table></div>' +
+      rs.map(r => `<tr><td><button class="lk nm" data-id="${esc(r.p.id)}">${esc(pname(r.p))}</button><br><small>${esc(tanto(r.p))}</small></td><td>${esc(r.t.type)}<br><small>${r.done ? '終了' : r.p.remaining !== null ? `残り${r.p.remaining}回` : ''}</small></td><td>${r.end === null ? '<small class="addtag">追加</small>' : md(r.end) + (r.done ? '' : '頃')}${r.plan.nm ? ' <small class="addtag nmtag">来月払い</small>' : r.plan.a && r.end !== null ? ` <small class="addtag">${r.plan.n ? '前月から' : '移動'}</small>` : ''}</td><td>${planSel(r)}${r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none' ? `<label class="nmck"><input type="checkbox" data-pnext="${esc(r.key)}" data-pid="${esc(r.p.id)}"${r.plan.nm ? ' checked' : ''}> 来月払い</label>` : ''}</td><td class="r">${r.plan.t === 'none' ? '¥0' : r.plan.t && priceOf(r.plan.t) ? yen(priceOf(r.plan.t)) : ''}</td><td>${res(r)}</td><td class="r">${r.done && r.next ? (r.next.paid === null ? '<small style="color:var(--sub)">不明</small>' : yen(r.next.paid)) : ''}</td><td><div class="why">${why(r)}</div></td><td><button class="hidebtn" data-pexcl="${esc(r.key)}" data-pid="${esc(r.p.id)}" data-pym="${state.month}" title="この月の一覧から外して、次の月の一覧に回す">外す</button></td></tr>`).join('') + '</table></div>' +
       `<div class="addbox"><label>＋ 患者さんを追加 <input type="search" id="addq" placeholder="名前で検索" autocomplete="off"></label><div id="addres"></div></div>` +
 
-      '<p class="note">「更新」と「入金額」は、CSVで回数券の購入が分かると自動で入ります（入金額は、価格から割引を引いた額。分割払いはこれまでの入金の合計）。「理由」は、更新なしを選んだ人と、終わったまま購入がない人に出ます。</p></details>';
+      '<p class="note">「更新」と「入金額」は、CSVで回数券の購入が分かると自動で入ります（入金額は、価格から割引を引いた額。分割払いはこれまでの入金の合計）。支払いが翌月になる人は「来月払い」にチェックすると、翌月の一覧と提案予定に移ります。「理由」は、更新なしを選んだ人と、終わったまま購入がない人に出ます。</p></details>';
   }
   top += '</div>';
 
@@ -2054,6 +2058,10 @@ document.addEventListener('change', e => {
     const cur = Object.assign({}, state.plans[key] || {});
     if (t.dataset.plan !== undefined) cur.t = t.value; else if (t.dataset.preason !== undefined) cur.r = t.value; else cur.m = t.value.slice(0, 200);
     savePlan(p, key, cur, t.dataset.plan === undefined); // 理由とメモは、画面を描き直さずに保存する
+  }
+  else if (t.dataset.pnext !== undefined) {
+    const key = t.dataset.pnext, base = (state.plans[key] || {}).nm ? null : nextYm(state.month);
+    planPatch(t.dataset.pid, key, t.checked ? { nm: true, a: base } : { nm: null, a: null, n: null }, t.checked ? `支払いを${+base.slice(5)}月にして、${+base.slice(5)}月の一覧に移しました。` : '来月払いをやめて、もとの月に戻しました。');
   }
   else if (t.dataset.price) { const v = Math.round(Number(t.value)); const pr = Object.assign({}, DEFAULT_PRICES, state.settings.prices || {}); if (t.value === '' ) delete pr[t.dataset.price]; else if (Number.isFinite(v) && v >= 0) pr[t.dataset.price] = v; state.settings.prices = pr; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); }
   else if (t.id === 'startDay') { state.settings.startDay = t.value || ''; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); }

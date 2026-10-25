@@ -280,12 +280,12 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 }
 @media (prefers-reduced-motion:no-preference){ dialog[open]{animation:rise .16s ease-out} @keyframes rise{from{opacity:0;transform:translateY(10px)}} }
 .ratebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;margin:10px 0 4px;font-size:13px;color:var(--sub)} .ratebar label{color:var(--ink);font-weight:700}
-.rbars .brow{grid-template-columns:96px 1fr 52px 104px 104px} .rbars .brow span:nth-child(n+3){text-align:right} .rbars .brow span:nth-child(4){color:var(--sub);font-weight:400} .rbars .brow.head{cursor:default;font-size:12px;color:var(--sub)} .rbars .brow.head:hover{background:none} .rbars .brow.head span{font-weight:400}
+.rbars .brow{grid-template-columns:96px 1fr 52px 110px 110px 110px} .rbars .brow span:nth-child(n+3){text-align:right} .rbars .brow span:nth-child(4),.rbars .brow span:nth-child(5){font-weight:400} .rbars .brow.head{cursor:default;font-size:12px;color:var(--sub)} .rbars .brow.head:hover{background:none} .rbars .brow.head span{font-weight:400}
 .endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px} .soonbox .oc{margin-left:auto;font-size:14px;font-weight:700;color:var(--ai);text-decoration:underline;text-underline-offset:3px;white-space:nowrap} .soonbox summary h2{flex-wrap:wrap}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
-@media (max-width:700px){ .rbars .brow{grid-template-columns:72px 1fr 40px 0 84px} .rbars .brow span:nth-child(4){display:none} .calls .crow{flex-wrap:wrap} }
+@media (max-width:700px){ .rbars .brow{grid-template-columns:78px 36px 1fr 1fr 1fr;gap:6px;font-size:11.5px;padding:4px 2px} .rbars .brow span:nth-child(2){display:none} .calls .crow{flex-wrap:wrap} }
 .nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
 .sumtbl th.sub,.sumtbl td.sub{font-size:13px} .sumtbl th.sub{color:var(--sub);font-weight:400} .sumtbl th.grp,.sumtbl td.grp{border-left:2px solid var(--line)} .sumtbl td.sub:last-of-type{} 
 #dlg .back{display:block;margin:0 0 6px;font-size:14px}
@@ -293,6 +293,13 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .hidebtn{border:1px solid var(--line);background:var(--surface);color:var(--sub);border-radius:8px;padding:6px 10px;min-height:36px;font-size:12px;cursor:pointer;white-space:nowrap} .hidebtn:hover{color:var(--ink);border-color:var(--sub)}
 .group.s-hidden .dot{background:var(--line)} .lrow.hrow{grid-template-columns:minmax(0,2.2fr) 1fr 1fr auto}
 .tick .tkd{font-weight:400;font-size:11px;margin-left:2px;opacity:.85}
+.kv2{margin-top:2px;font-size:14px} .kv2 small{color:var(--sub)}
+.plantbl{width:100%;min-width:900px;border-collapse:collapse;font-size:13px} .plantbl th{font-size:12px;color:var(--sub);font-weight:400;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)} .plantbl td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:middle} .plantbl td small{color:var(--sub)} .plantbl .r{text-align:right;white-space:nowrap}
+.plantbl select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-height:34px;font-size:13px;color:var(--ink)} .plantbl .why{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-width:220px} .plantbl .why input{flex:1;min-width:110px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-height:34px;font-size:13px;color:var(--ink)} .plantbl .lk.nm{font-weight:700;text-decoration:none;color:var(--ink)}
+.addtag{display:inline-block;font-size:11px;padding:0 6px;border-radius:999px;background:var(--ai-weak);color:var(--ai)}
+.addbox{margin:12px 0 4px} .addbox label{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap} .addbox input{flex:1;max-width:320px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:38px;font-size:15px;color:var(--ink)}
+#addres{display:grid;gap:2px;margin-top:6px;max-width:640px} .addhit{text-align:left;background:none;border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:13px} .addhit:hover{background:var(--sunken)} .addhit small{color:var(--sub)}
+.outbox{margin-top:10px;font-size:13px} .outbox summary{cursor:pointer;color:var(--sub)}
 .ctmonths{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 2px}
 .cth{font-size:14px;margin:16px 0 4px;color:var(--sub);font-weight:700}
 .cttbl{table-layout:fixed;width:100%;min-width:480px} .cttbl th:first-child{width:34%} .cttbl td.r,.cttbl th.r{white-space:nowrap} .cttbl .pct{display:inline-block;min-width:3.2em;margin-left:6px;color:var(--sub);font-size:12px}
@@ -339,7 +346,6 @@ details.mig{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;fo
   <div class="staffbar" id="staffBar" role="group" aria-label="担当者で切り替え" hidden></div>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="follow">患者さん一覧</button>
-    <button role="tab" data-tab="cal">来院カレンダー</button>
     <button role="tab" data-tab="renew">更新見込み</button>
     <button role="tab" data-tab="csv" id="tabCsv">CSVを入れる</button>
     <button role="tab" data-tab="mem" id="tabMem" hidden>メンバー</button>
@@ -425,7 +431,8 @@ function ingest(data, type, table, fallback) {
       data.pay.set(id, { id, res: g(row, '予約ID'), cust: g(row, '顧客ID') });
     } else if (type === '精算アイテム') {
       const id = g(row, '明細ID'); if (!id) continue;
-      data.items.set(id, { id, acct: g(row, '会計ID'), kind: g(row, '区分'), name: g(row, '品目名') });
+      const pr = idx['価格'] === undefined || g(row, '価格') === '' ? null : (Number(g(row, '価格')) || 0) - (Number(g(row, '割引')) || 0); // 入金額（価格から割引を引いた額）。列がない古いデータは不明
+      data.items.set(id, { id, acct: g(row, '会計ID'), kind: g(row, '区分'), name: g(row, '品目名'), price: pr });
     } else if (type === '顧客') {
       const id = g(row, '顧客ID'); if (!id) continue;
       data.cust.set(id, { id, name: g(row, '氏名'), kana: g(row, '氏名カナ') }); // 氏名以外の個人情報は保持しない
@@ -512,7 +519,7 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       const { valid, deleted } = days.get(d);
       if (!valid.length) { cancels.push(d); continue; }
       if (d > asOfP) { futures.push(d); continue; }
-      const names = [], buys = [];
+      const names = [], buys = []; let buyAmt = 0, buyAmtKnown = true;
       let use = null, uses = 0, useW = 0, renewItem = false, staff = valid[0].staff;
       for (const r of valid) {
         for (const a of acctByRes.get(r.id) || []) {
@@ -528,25 +535,25 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
               staff = r.staff;
             } else if (it.kind === '2') {
               const mb = nm.match(RE_BUY);
-              if (mb) buys.push({ type: mb[1] ? mb[1].toUpperCase() + mb[2] : mb[2] + '回券', N: +mb[2], generic: !mb[1] });
+              if (mb) { buys.push({ type: mb[1] ? mb[1].toUpperCase() + mb[2] : mb[2] + '回券', N: +mb[2], generic: !mb[1] }); if (it.price === null || it.price === undefined) buyAmtKnown = false; else buyAmt += it.price; }
             }
           }
         }
       }
-      visits.push({ day: d, staff, names, use, uses, useW, renewItem, buys, isNew: valid.some(r => r.isNew), store: valid[0].store, booked: valid.some(r => r.next !== null && r.next > 0) });
+      visits.push({ day: d, staff, names, use, uses, useW, renewItem, buys, isNew: valid.some(r => r.isNew), store: valid[0].store, booked: valid.some(r => r.next !== null && r.next > 0), buyAmt: buyAmtKnown ? buyAmt : null });
     }
 
     /* 回数券の流れを組み立てる */
     const tickets = [];
     let cur = null;
     const open = (type, N, start, known) => {
-      cur = { type, N, start, known, uses: [], usedSum: 0, pays: 1, ended: false, endDay: null, renewal: false, mixed: false, noBuyRecord: false };
+      cur = { type, N, start, known, uses: [], usedSum: 0, pays: 1, paid: 0, ended: false, endDay: null, renewal: false, mixed: false, noBuyRecord: false };
       tickets.push(cur); return cur;
     };
     const addUse = (v) => {
       if (!cur || cur.ended) {
         const afterEnd = !!(cur && cur.ended);
-        open(v.use.type, v.use.N, afterEnd ? v.day : null, afterEnd);
+        open(v.use.type, v.use.N, afterEnd ? v.day : null, afterEnd); cur.paid = null; // 購入の記録がない回数券は、入金額が分からない
         if (afterEnd) { cur.renewal = true; cur.noBuyRecord = true; }
       }
       if (cur.type !== v.use.type) {
@@ -564,13 +571,13 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       }
       /* 回数券が残っているあいだに同じ券種の購入の行が出たら、分割払いの2回目以降とみなして、新しい券は始めない */
       const instalment = v.buys.length && cur && cur.known && !cur.ended && !v.renewItem && v.buys.every(b => b.type === cur.type || b.type === v.buys[0].type && cur.type === b.type.replace(/\d+$/, '') + cur.N);
-      if (instalment) { cur.pays += 1; if (v.use) addUse(v); }
+      if (instalment) { cur.pays += 1; cur.paid = cur.paid === null || v.buyAmt === null ? null : cur.paid + v.buyAmt; if (v.use) addUse(v); }
       else if (v.buys.length) {
         const N = v.buys.reduce((s, b) => s + b.N, 0);
         if (cur && !cur.ended) { cur.ended = true; cur.endDay = v.day; cur.superseded = true; }
         const prev = cur;
         open(v.buys.length > 1 && v.buys.every(b => b.type === v.buys[0].type) && v.buys[0].type.match(/^[A-Z]/) ? v.buys[0].type.replace(/\d+$/, '') + N : v.buys[0].type, N, v.day, true);
-        cur.generic = !!v.buys[0].generic;
+        cur.generic = !!v.buys[0].generic; cur.paid = v.buyAmt;
         cur.renewal = v.renewItem || (hadTicket && !v.isNew);
         cur.multi = v.buys.length > 1;
         if (prev && prev.renewPoint) prev.renewed = true;
@@ -671,7 +678,7 @@ function tablesOf(data) {
     '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
       rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: [...data.pay.values()].map(p => [p.id, p.res]) },
-    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名'], rows: [...data.items.values()].map(i => [i.id, i.acct, i.kind, i.name]) },
+    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...data.items.values()].map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...data.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
   };
 }
@@ -702,7 +709,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/24-1';
+const APP_VER = '10/25-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -716,7 +723,7 @@ const ymd = n => { const d = dayToDate(n); return `${d.getUTCFullYear()}/${d.get
 let data = emptyData(), model;
 const state = { tab: 'follow', staff: '', store: '', area: '', areas: [], asOfByStore: {}, single: '', storeList: [], calMode: 'attn', open: {}, month: null, asOf: todayDay(),
   settings: Object.assign({}, DEFAULT_SETTINGS), pace: {}, loadMsg: '', openId: null,
-  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, renewCall: {}, hidden: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
+  me: null, members: [], memEdit: null, areasAll: [], gate: 'loading', loadTotal: 0, loadDone: 0, dbState: 'loading', loadProg: '', contacts: {}, renewCall: {}, hidden: {}, plans: {}, onlyNew: {}, isOwner: false, canAdmin: true, canWrite: true, metaVersion: null, partIds: [], savedAt: null, saving: false, note: '' };
 
 /* ---- LINE・手紙の記録 ----
    院ごとに1つの文書（contacts/s-xxxx）に、{ p: { 顧客ID: [{d:'YYYY-MM-DD', m:'line'|'letter'}] } } で残す */
@@ -845,7 +852,7 @@ function storeTablesOf(src, full) {
     '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
       rows: res.map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: pay.map(p => [p.id, p.res]) },
-    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名'], rows: [...src.items.values()].filter(i => aid.has(i.acct)).map(i => [i.id, i.acct, i.kind, i.name]) },
+    '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...src.items.values()].filter(i => aid.has(i.acct)).map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...src.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
   };
 }
@@ -878,6 +885,11 @@ function saveContacts(p, list, msg, undo) {
   enqueue(() => FB.set('contacts/' + s, { p: { [p.id]: list } }, true)
     .then(() => flash(msg || '記録しました。', undo), () => { flash('記録できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
   for (const o of Object.keys(contactsBy)) if (o !== s && Array.isArray(contactsBy[o][p.id]) && contactsBy[o][p.id].length) enqueue(() => FB.set('contacts/' + o, { p: { [p.id]: [] } }, true).catch(() => {})); // ほかの院に残っている古い記録は空にする（転院した人）
+}
+function savePlan(p, key, obj, quiet, msg, undo) {
+  state.plans[key] = obj; if (!quiet) rebuild();
+  enqueue(() => FB.set('contacts/' + sid(p.store), { u: { [key]: obj } }, true)
+    .then(() => flash(msg || `${pname(p)}さん：保存しました`, undo), () => { flash('保存できませんでした。通信状態を確認して、もう一度押してください。'); rebuild(); }));
 }
 function saveHide(p, d, msg, undo) {
   if (d) state.hidden[p.id] = d; else delete state.hidden[p.id];
@@ -920,7 +932,7 @@ function savePace(id, days) {
 }
 
 /* 院ごとの LINE・手紙 と 来院ペース を1つにまとめる */
-const contactsBy = {}, paceBy = {}, callsBy = {}, hideBy = {};
+const contactsBy = {}, paceBy = {}, callsBy = {}, hideBy = {}, planBy = {};
 function mergeSide() {
   const c = {}, p = {};
   for (const s of Object.keys(contactsBy)) for (const k of Object.keys(contactsBy[s])) if (Array.isArray(contactsBy[s][k])) c[k] = (c[k] || []).concat(contactsBy[s][k]);
@@ -928,7 +940,8 @@ function mergeSide() {
   for (const s of Object.keys(paceBy)) Object.assign(p, paceBy[s]);
   const rc = {}; for (const s of Object.keys(callsBy)) for (const k of Object.keys(callsBy[s])) if (callsBy[s][k] && (!rc[k] || callsBy[s][k] > rc[k])) rc[k] = callsBy[s][k];
   const hd = {}; for (const s of Object.keys(hideBy)) for (const k of Object.keys(hideBy[s])) if (hideBy[s][k] && (!hd[k] || hideBy[s][k] > hd[k])) hd[k] = hideBy[s][k];
-  state.contacts = c; state.pace = p; state.renewCall = rc; state.hidden = hd;
+  const pl = {}; for (const s of Object.keys(planBy)) for (const k of Object.keys(planBy[s])) if (planBy[s][k] && typeof planBy[s][k] === 'object') pl[k] = Object.assign(pl[k] || {}, planBy[s][k]);
+  state.contacts = c; state.pace = p; state.renewCall = rc; state.hidden = hd; state.plans = pl;
 }
 
 /* ---- ログインと読み込み ---- */
@@ -936,7 +949,7 @@ let unsubs = [];
 const watched = new Set();
 function watchStore(s) {
   if (watched.has(s)) return; watched.add(s);
-  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; callsBy[s] = (x && x.r) || {}; hideBy[s] = (x && x.h) || {}; mergeSide(); rebuild(); }, () => {}));
+  unsubs.push(FB.watch('contacts/' + s, x => { contactsBy[s] = (x && x.p) || {}; callsBy[s] = (x && x.r) || {}; hideBy[s] = (x && x.h) || {}; planBy[s] = (x && x.u) || {}; mergeSide(); rebuild(); }, () => {}));
   unsubs.push(FB.watch('pace/' + s, (x, pending) => { if (pending) return; paceBy[s] = (x && x.p) || {}; mergeSide(); rebuild(); }, () => {}));
 }
 function onMetas(list, first) {
@@ -1090,7 +1103,7 @@ function rebuild() {
   model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore);
   renderChrome();
   const ae = document.activeElement;
-  if (!((state.tab === 'set' || state.tab === 'csv') && ae && ae.closest && ae.closest('#view') && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))) render(); // 入力中の欄は作り直さない
+  if (!((state.tab === 'set' || state.tab === 'csv' || state.tab === 'renew') && ae && ae.closest && ae.closest('#view') && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName))) render(); // 入力中の欄は作り直さない
   if ($('#dlg').open && state.openId) openPatient(state.openId, true);
 }
 
@@ -1521,40 +1534,72 @@ function viewCal() {
 /* ---- 更新見込み ---- */
 /* 更新の売上見込み：同じ回数券で更新した場合の金額 */
 const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const PLAN_REASONS = ['良くなった', '引越し・転勤', '長期出張', '距離・動線', '金銭面', '担当変更', '都度', 'その他'];
 const priceOf = t => { const pr = Object.assign({}, DEFAULT_PRICES, model.settings.prices || {}); const v = Number(pr[t]); return v > 0 ? v : null; };
 const callOf = p => { const d = state.renewCall[p.id]; return d && (!p.tk || p.tk.start === null || toDay(d) >= p.tk.start) ? d : null; }; // いまの回数券のあいだに声かけした日
 function viewRenew() {
   const sc = scoped().filter(p => p.isTicket);
   const act = sc.filter(p => p.status !== 'ended' && p.status !== 'away'), known = act.filter(p => p.endDay !== null);
-  const months = new Map();
-  for (const p of known) { const k = dayISO(p.endDay).slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(p); }
-  const keys = [...months.keys()].sort();
-  if (!keys.includes(state.month)) state.month = keys[0] || null;
+  /* 月ごとの対象：今の回数券がその月に終わる見込みの人と、その月に回数券が終わった人（直近3か月） */
+  const cutoff = model.asOf - 92, rowsAll = [];
+  for (const p of sc) {
+    p.tickets.forEach((t, i) => { if (t.ended && t.endDay !== null && t.endDay >= cutoff) rowsAll.push({ p, t, end: t.endDay, done: true, next: p.tickets[i + 1] || null }); });
+    if (p.tk && !p.tk.ended && p.endDay !== null && p.status !== 'ended' && p.status !== 'away') rowsAll.push({ p, t: p.tk, end: p.endDay, done: false, next: null });
+  }
+  for (const r of rowsAll) { r.key = planKey(r.p, r.t); r.plan = state.plans[r.key] || {}; }
+  /* 手で追加した人（その月に移した人を含む） */
+  const scIds = new Set(sc.map(p => p.id)), haveKey = new Set(rowsAll.map(r => r.key));
+  for (const k of Object.keys(state.plans)) {
+    const pl = state.plans[k]; if (!pl || !pl.a || haveKey.has(k)) continue;
+    const p = model.patients.find(q => q.id === k.split('@')[0]); if (!p || !p.last || !inArea(p.store, state.area) || (state.store && p.store !== state.store) || (state.staff && p.staff !== state.staff)) continue;
+    rowsAll.push({ p, t: p.tk || { type: '回数券なし', uses: [], start: null }, end: null, done: false, next: null, key: k, plan: pl, added: true });
+  }
+  const months = new Map(), outs = new Map();
+  for (const r of rowsAll) { let k = r.plan.a || dayISO(r.end).slice(0, 7); if (r.plan.x && !r.plan.a) k = nextYm(k); if (!months.has(k)) months.set(k, []); months.get(k).push(r); }
+  const keys = [...months.keys()].sort(), thisMonth = dayISO(todayDay()).slice(0, 7);
+  if (!keys.includes(state.month)) state.month = keys.includes(thisMonth) ? thisMonth : (keys.find(k => k > thisMonth) || keys[keys.length - 1] || null);
   const max = Math.max(1, ...keys.map(k => months.get(k).length));
   const mlabel = k => `${+k.slice(0, 4)}年${+k.slice(5)}月`;
   const rate = Math.max(0, Math.min(100, Number(model.settings.renewRate) || 0));
-  const sum = ps => ps.reduce((a, p) => a + (priceOf(p.tk.type) || 0), 0);
-  const noPrice = known.filter(p => !priceOf(p.tk.type)), noTypes = [...new Set(noPrice.map(p => p.tk.type))];
+  const sum = rs => rs.reduce((a, r) => a + (priceOf(r.t.type) || 0), 0);
+  const noPrice = rowsAll.filter(r => !priceOf(r.t.type)), noTypes = [...new Set(noPrice.map(r => r.t.type))];
   /* 参考：実際の更新率（更新のタイミングを迎えた人のうち、回数券を買った人） */
   const sd0 = model.settings.startDay ? toDay(model.settings.startDay) : null;
   const rp = model.renewPoints.filter(x => x.p.last && x.t.known && (sd0 === null || x.t.start >= sd0) && (!state.staff || x.p.staff === state.staff) && inArea(x.p.store, state.area) && (!state.store || x.p.store === state.store));
   const yes = rp.filter(x => x.renewed).length;
-  const next3 = keys.slice(0, 3), n3 = next3.flatMap(k => months.get(k));
 
-  let top = `<p class="guide">この先、いつ・何人の回数券が終了するかと、同じ回数券で更新した場合の売上の見込みです。</p>`;
+  let top = `<p class="guide">この先、いつ・何人の回数券が終了するかと、更新の売上見込みです。月の一覧で、更新の提案予定を選べます。</p>`;
   top += `<div class="card" style="margin-bottom:20px"><h2>回数券が終了する見込みと、更新の売上見込み</h2>
-    <p>今のペースで通った場合に最後の1回が来る月です。次回予約がある人は予約日から、ない人は目安日から数えています。「最大」は全員が同じ回数券で更新した場合、「見込み」はそれに更新率をかけた金額です。</p>
+    <p>今のペースで通った場合に最後の1回が来る月です（過去3か月は、実際に終わった月）。「見込み」は全員が同じ回数券で更新した場合に更新率をかけた金額、「提案予定」はスタッフが選んだ回数券の合計、「実績」はCSVで分かった実際の入金の合計です。</p>
     <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canManage() ? '' : ' disabled'}> %</label>
       ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
   if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
-    const selPs = months.get(state.month);
-    top += `<div class="kv"><span>${mlabel(state.month)}に終了　<b>${selPs.length}</b>人</span><span>最大 <b>${yen(sum(selPs))}</b></span><span>見込み <b>${yen(sum(selPs) * rate / 100)}</b></span></div><p class="note" style="margin:2px 0 0">下の月を押すと、その月の金額に切り替わります。</p>`;
-    top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>最大</span><span>見込み</span></div>' + keys.map(k => { const ps = months.get(k), m = sum(ps); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}</span><span><i style="width:${ps.length / max * 100}%"></i></span><span>${ps.length}人</span><span>${yen(m)}</span><span><b>${yen(m * rate / 100)}</b></span></button>`; }).join('') + '</div>';
+    const planOf = rs => rs.filter(r => r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none').reduce((a, r) => a + (priceOf(r.plan.t) || 0), 0);
+    const paidOf = rs => rs.filter(r => r.done && r.next).reduce((a, r) => a + (r.next.paid || 0), 0);
+    const sel = months.get(state.month);
+    const planned = sel.filter(r => r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none'), tbd = sel.filter(r => r.plan.t === 'tbd'), none = sel.filter(r => r.plan.t === 'none');
+    const won = sel.filter(r => r.done && r.next), paidSum = won.reduce((a, r) => a + (r.next.paid || 0), 0), paidUnknown = won.some(r => r.next.paid === null);
+    const planSum = planned.reduce((a, r) => a + (priceOf(r.plan.t) || 0), 0);
+    top += `<div class="kv"><span>${mlabel(state.month)}に終了　<b>${sel.length}</b>人</span><span>見込み <b>${yen(sum(sel) * rate / 100)}</b></span><span>提案予定 <b>${yen(planSum)}</b></span><span>実績 <b>${yen(paidSum)}</b>${planSum ? ` <small>（達成率 ${Math.round(paidSum / planSum * 100)}%）</small>` : ''}</span></div>
+      <div class="kv kv2"><span>提案　更新予定 <b>${planned.length}</b>人　<small>未定 ${tbd.length}人・更新なし ${none.length}人・まだ選んでいない ${sel.length - planned.length - tbd.length - none.length}人</small></span><span>実績　更新 <b>${won.length}</b>人${paidUnknown ? ' <small>（入金額が分からない人あり）</small>' : ''}</span></div>
+      <p class="note" style="margin:2px 0 0">下の月を押すと、その月に切り替わります。</p>`;
+    const dash = '<span style="color:var(--sub)">ー</span>';
+    top += '<div class="bars rbars"><div class="brow head"><span>終了する月</span><span></span><span>人数</span><span>見込み</span><span>提案予定</span><span>実績</span></div>' + keys.map(k => { const rs = months.get(k), pl = planOf(rs), pd = paidOf(rs); return `<button class="brow" data-month="${k}" aria-pressed="${k === state.month}"><span>${mlabel(k)}${k < thisMonth ? ' <small style="color:var(--sub)">済</small>' : ''}</span><span><i style="width:${rs.length / max * 100}%"></i></span><span>${rs.length}人</span><span>${yen(sum(rs) * rate / 100)}</span><span>${pl ? yen(pl) : dash}</span><span><b>${pd ? yen(pd) : dash}</b></span></button>`; }).join('') + '</div>';
     if (noPrice.length) top += `<p class="note" style="margin-top:8px">金額が決まっていない回数券（${noTypes.map(esc).join('・')}）の${noPrice.length}人は、金額に入れていません。${canManage() ? '「設定」の「回数券の金額」で決められます。' : ''}</p>`;
-    const ps = months.get(state.month).slice().sort((a, b) => a.endDay - b.endDay);
-    top += `<details class="endlist" data-g="endlist"${state.open.endlist ? ' open' : ''}><summary><h3>${mlabel(state.month)}に終了する見込みの患者さん　<small>${ps.length}人・最大 ${yen(sum(ps))}・見込み ${yen(sum(ps) * rate / 100)}</small><span class="oc">${state.open.endlist ? '閉じる' : '開く'}</span></h3></summary><div class="mini">` +
-      ps.map(p => `<button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${md(p.endDay)}頃${priceOf(p.tk.type) ? '・' + yen(priceOf(p.tk.type)) : ''}</small></span></button>`).join('') + '</div></details>';
+    const rs = sel.slice().sort((a, b) => (a.end === null) - (b.end === null) || a.end - b.end)
+    const pr = Object.assign({}, DEFAULT_PRICES, model.settings.prices || {});
+    const types = Object.keys(pr).filter(t => /^[A-Z]+\d+$/.test(t)).sort((a, b) => a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, '')) * -1 || parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, '')));
+    const planSel = r => `<select data-plan="${esc(r.key)}" data-pid="${esc(r.p.id)}" aria-label="提案予定回数"><option value="">ー</option>${types.map(t => `<option value="${t}"${r.plan.t === t ? ' selected' : ''}>${t}</option>`).join('')}<option value="tbd"${r.plan.t === 'tbd' ? ' selected' : ''}>未定</option><option value="none"${r.plan.t === 'none' ? ' selected' : ''}>更新なし</option></select>`;
+    const res = r => r.done ? (r.next ? `<span class="n s-ok">○ ${esc(r.next.type)}</span>` : '<span class="n s-cancelled">×</span>') : '';
+    const showWhy = r => r.plan.t === 'none' || (r.done && !r.next);
+    const why = r => showWhy(r) ? `<select data-preason="${esc(r.key)}" data-pid="${esc(r.p.id)}" aria-label="理由"><option value="">理由</option>${PLAN_REASONS.map(x => `<option${r.plan.r === x ? ' selected' : ''}>${x}</option>`).join('')}</select><input type="text" data-pmemo="${esc(r.key)}" data-pid="${esc(r.p.id)}" value="${esc(r.plan.m || '')}" placeholder="メモ" aria-label="メモ">` : '';
+    top += `<details class="endlist" data-g="endlist"${state.open.endlist ? ' open' : ''}><summary><h3>${mlabel(state.month)}に回数券が終わる患者さん　<small>${rs.length}人</small><span class="oc">${state.open.endlist ? '閉じる' : '開く'}</span></h3></summary>
+      <div style="overflow-x:auto"><table class="plantbl"><tr><th>患者さん</th><th>保持回数券</th><th>終了</th><th>提案予定回数</th><th class="r">金額</th><th>更新</th><th class="r">入金額</th><th>理由</th><th></th></tr>` +
+      rs.map(r => `<tr><td><button class="lk nm" data-id="${esc(r.p.id)}">${esc(pname(r.p))}</button><br><small>${esc(tanto(r.p))}</small></td><td>${esc(r.t.type)}<br><small>${r.done ? '終了' : r.p.remaining !== null ? `残り${r.p.remaining}回` : ''}</small></td><td>${r.end === null ? '<small class="addtag">追加</small>' : md(r.end) + (r.done ? '' : '頃')}${r.plan.a && r.end !== null ? ` <small class="addtag">${r.plan.n ? '前月から' : '移動'}</small>` : ''}</td><td>${planSel(r)}</td><td class="r">${r.plan.t === 'none' ? '¥0' : r.plan.t && priceOf(r.plan.t) ? yen(priceOf(r.plan.t)) : ''}</td><td>${res(r)}</td><td class="r">${r.done && r.next ? (r.next.paid === null ? '<small style="color:var(--sub)">不明</small>' : yen(r.next.paid)) : ''}</td><td><div class="why">${why(r)}</div></td><td><button class="hidebtn" data-pexcl="${esc(r.key)}" data-pid="${esc(r.p.id)}" data-pym="${state.month}" title="この月の一覧から外して、次の月の一覧に回す">外す</button></td></tr>`).join('') + '</table></div>' +
+      `<div class="addbox"><label>＋ 患者さんを追加 <input type="search" id="addq" placeholder="名前で検索" autocomplete="off"></label><div id="addres"></div></div>` +
+
+      '<p class="note">「更新」と「入金額」は、CSVで回数券の購入が分かると自動で入ります（入金額は、価格から割引を引いた額。分割払いはこれまでの入金の合計）。「理由」は、更新なしを選んだ人と、終わったまま購入がない人に出ます。</p></details>';
   }
   top += '</div>';
 
@@ -1566,6 +1611,21 @@ function viewRenew() {
       soon.map(p => { const c = callOf(p); return `<div class="crow"><button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button><button class="tick" data-call="${esc(p.id)}" aria-pressed="${!!c}"><i></i>${c ? `声かけ済み ${md(toDay(c))}` : '声かけ済み'}</button></div>`; }).join('') + '</div></details>';
   }
   return top;
+}
+const nextYm = ym => { const y = +ym.slice(0, 4), m = +ym.slice(5); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`; };
+const planKey = (p, t) => p.id + '@' + (!t ? 'none' : t.start !== null && t.start !== undefined ? t.start : (t.uses && t.uses[0] !== undefined ? 'u' + t.uses[0] : 'x'));
+function planPatch(pid, key, patch, msg, undo) {
+  const p = model.patients.find(q => q.id === pid); if (!p) return;
+  const cur = Object.assign({}, state.plans[key] || {}, patch);
+  for (const k of Object.keys(cur)) if (cur[k] === null) cur[k] = false; // 保存先は項目ごとに上書きされるので、消すときは false にする
+  savePlan(p, key, cur, false, msg, undo);
+}
+function addResults(q) {
+  const box = $('#addres'); if (!box) return;
+  q = String(q || '').trim(); if (!q) { box.innerHTML = ''; return; }
+  const n = q.replace(/[\s\u3000]/g, '');
+  const hits = model.patients.filter(p => p.last && inArea(p.store, state.area) && (!state.store || p.store === state.store) && (!state.staff || p.staff === state.staff) && pname(p).replace(/[\s\u3000]/g, '').includes(n)).sort((a, b) => b.last.day - a.last.day).slice(0, 8);
+  box.innerHTML = hits.length ? hits.map(p => `<button class="addhit" data-addp="${esc(p.id)}"><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}・${esc(ticketText(p))}・最後の来院 ${md(p.last.day)}</small></button>`).join('') : '<small style="color:var(--sub)">見つかりません</small>';
 }
 function toggleHide(id, on) {
   const p = model.patients.find(q => q.id === id); if (!p) return;
@@ -1936,9 +1996,12 @@ function render() {
   if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-hide],[data-unhide],[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-pexcl],[data-pincl],[data-addp],[data-hide],[data-unhide],[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.hide) toggleHide(d.hide, true);
+  if (d.pexcl) { const before = Object.assign({}, state.plans[d.pexcl] || {}), to = nextYm(d.pym); planPatch(d.pid, d.pexcl, { a: to, n: true, x: null }, `${+to.slice(5)}月の一覧に回しました。`, () => { const p = model.patients.find(q => q.id === d.pid); if (p) savePlan(p, d.pexcl, Object.assign({ a: false, n: false, x: false }, before), false, '元に戻しました。'); }); }
+  else if (d.pincl) planPatch(d.pid, d.pincl, { x: null }, 'この月の一覧に戻しました。');
+  else if (d.addp) { const p = model.patients.find(q => q.id === d.addp); if (p) planPatch(p.id, planKey(p, p.tk), { a: state.month, n: false, x: null }, `${pname(p)}さんを追加しました。`); }
+  else if (d.hide) toggleHide(d.hide, true);
   else if (d.unhide) toggleHide(d.unhide, false);
   else if (d.plist !== undefined) openList(Number(d.plist));
   else if (d.call) toggleCall(d.call);
@@ -1986,6 +2049,12 @@ document.addEventListener('change', e => {
     for (const s of targets) storeData[s].asOf = d;
     mergeAll(); rebuild();
     enqueue(() => Promise.all(targets.map(s => FB.set('stores/' + s, { asOf: dayISO(d) }, true))).then(() => flash('基準日を保存しました。'), () => flash('保存できませんでした。'))); } }
+  else if (t.dataset.plan !== undefined || t.dataset.preason !== undefined || t.dataset.pmemo !== undefined) {
+    const key = t.dataset.plan || t.dataset.preason || t.dataset.pmemo, p = model.patients.find(q => q.id === t.dataset.pid); if (!p) return;
+    const cur = Object.assign({}, state.plans[key] || {});
+    if (t.dataset.plan !== undefined) cur.t = t.value; else if (t.dataset.preason !== undefined) cur.r = t.value; else cur.m = t.value.slice(0, 200);
+    savePlan(p, key, cur, t.dataset.plan === undefined); // 理由とメモは、画面を描き直さずに保存する
+  }
   else if (t.dataset.price) { const v = Math.round(Number(t.value)); const pr = Object.assign({}, DEFAULT_PRICES, state.settings.prices || {}); if (t.value === '' ) delete pr[t.dataset.price]; else if (Number.isFinite(v) && v >= 0) pr[t.dataset.price] = v; state.settings.prices = pr; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); }
   else if (t.id === 'startDay') { state.settings.startDay = t.value || ''; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); }
   else if (t.dataset.set) {
@@ -1994,6 +2063,7 @@ document.addEventListener('change', e => {
     else t.value = state.settings[t.dataset.set];
   }
 });
+document.addEventListener('input', e => { if (e.target.id === 'addq') addResults(e.target.value); });
 document.addEventListener('dragover', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) { e.preventDefault(); z.classList.add('on'); } });
 document.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) z.classList.remove('on'); });
 document.addEventListener('drop', e => {

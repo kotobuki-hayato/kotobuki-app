@@ -328,7 +328,7 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .memtbl{width:100%;border-collapse:collapse;font-size:14px} .memtbl td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top} .memtbl small{color:var(--sub)}
 .memtbl .r{text-align:right;white-space:nowrap}
 .role{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--sunken);white-space:nowrap} .role.r-admin{background:var(--ai-weak);color:var(--ai)} .role.r-am{background:var(--tokiwa-weak);color:var(--tokiwa)}
-.lk.danger{color:var(--shu)} .memtbl .nw{white-space:nowrap}
+.lk.danger{color:var(--shu)} .pwrow{display:flex;gap:6px;align-items:center} .pwrow input{flex:1} .donebox{margin-bottom:16px;border-color:var(--tokiwa)} .donebox textarea{font-size:14px} .top .me .btn.sm{white-space:nowrap} .memtbl .nw{white-space:nowrap}
 details.mig{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;font-size:14px} details.mig summary{cursor:pointer;font-weight:700}
 @media (max-width:700px){ .top .me{margin-left:0;width:100%;justify-content:space-between} .top .me span{align-items:flex-start} .memtbl td{display:block;border-top:0;padding:2px 0} .memtbl tr{display:block;border-top:1px solid var(--line);padding:8px 0} .memtbl .r{text-align:left} }
 </style>
@@ -712,7 +712,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/25-4';
+const APP_VER = '10/28-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1064,7 +1064,7 @@ async function onUser(user) {
 function renderMe() {
   const m = state.me, b = $('#meBox'); if (!b) return;
   b.hidden = !m;
-  if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${ROLE[m.role] || ''}</small></span><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
+  if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${ROLE[m.role] || ''}</small></span><button class="btn ghost sm" data-act="chpw">パスワード変更</button><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
   const t = $('#tabMem'); if (t) t.hidden = !canUpload();
 }
 async function boot() {
@@ -1075,6 +1075,15 @@ async function boot() {
 }
 window.addEventListener('hashchange', () => { if (state.gate === 'login') gate('login'); });
 async function logout() { await cacheClear(); try { localStorage.removeItem('raiin-who'); } catch (e) { /* なくてもよい */ } await FB.signOut(); location.replace(location.pathname); }
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'fPw') return;
+  e.preventDefault();
+  const f = e.target, m = $('#pwMsg');
+  if (f.pw.value.length < 8) { m.textContent = '新しいパスワードは8文字以上にしてください。'; return; }
+  if (f.pw.value !== f.pw2.value) { m.textContent = '新しいパスワードが2つで同じではありません。'; return; }
+  try { await FB.changePassword(f.cur.value, f.pw.value); $('#dlg').close(); flash('パスワードを変更しました。'); }
+  catch (err) { m.textContent = err && (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') ? '今のパスワードが違います。' : authMsg(err); }
+});
 document.addEventListener('submit', async e => {
   const f = e.target; if (!f.id || !/^f(Login|Setup)$/.test(f.id)) return;
   e.preventDefault();
@@ -1091,6 +1100,14 @@ document.addEventListener('click', async e => {
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act;
   if (act === 'logout') { e.preventDefault(); logout(); }
+  else if (act === 'chpw') {
+    $('#dlg').innerHTML = `<div class="dh"><div><h2 id="dlgTitle">パスワード変更</h2></div><button class="x" data-act="close" aria-label="閉じる">×</button></div>
+      <div class="db"><form id="fPw" class="memform"><label>今のパスワード<input type="password" name="cur" autocomplete="current-password" required></label>
+      <label>新しいパスワード（8文字以上）<input type="password" name="pw" autocomplete="new-password" minlength="8" required></label>
+      <label>新しいパスワード（もう一度）<input type="password" name="pw2" autocomplete="new-password" minlength="8" required></label>
+      <p id="pwMsg" class="hint"></p><button class="btn">変更する</button></form></div>`;
+    $('#dlg').showModal();
+  }
   else if (act === 'toLogin') { e.preventDefault(); history.replaceState(null, '', location.pathname); gate('login'); }
   else if (act === 'forgot') {
     const f = $('#fLogin'), email = f ? f.email.value.trim() : '';
@@ -1930,18 +1947,20 @@ function viewMembers() {
   const areas = (state.areasAll || []).filter(a => isAdmin() || a.stores.some(x => mine.some(k => k.includes(keyOf(x)))));
   const checked = new Set(ed.stores || []);
   const roleSel = isAdmin() ? `<label>役割 <select name="role">${['staff', 'am', 'admin'].map(r => `<option value="${r}"${(ed.role || 'staff') === r ? ' selected' : ''}>${ROLE[r]}</option>`).join('')}</select></label>` : '<input type="hidden" name="role" value="staff">';
-  return `<p class="guide">このアプリを使う人を登録します。登録すると、その人に「パスワードの再設定」というメールが届きます。メールのリンクからパスワードを決めれば、ログインできるようになります。${isAdmin() ? '' : 'エリマネは、担当の院のスタッフを登録できます。'}</p>
+  const done = state.memDone, msg = done ? `${done.name}さん\n既存患者さんアプリのアカウントを作りました。\n\nURL：${backUrl()}\nメールアドレス：${done.email}\nパスワード：${done.pw}\n\nログインしたら、右上の「パスワード変更」で好きなパスワードに変えてください。` : '';
+  return `${done ? `<div class="card donebox"><h2>${esc(done.name)}さんのログインの案内</h2><p>下の文をコピーして、LINEなどで本人に送ってください。パスワードはこの画面を閉じると表示されなくなります。</p><textarea id="doneMsg" rows="8" readonly>${esc(msg)}</textarea><p style="margin:8px 0 0;display:flex;gap:8px"><button class="btn" data-act="copyDone">コピーする</button><button class="btn ghost" data-act="closeDone">閉じる</button></p></div>` : ''}<p class="guide">このアプリを使う人を登録します。登録するときに最初のパスワードを決めて、本人に伝えてください。本人はそのパスワードですぐログインでき、あとから自分で変えられます。パスワードを忘れた人には「メール再送」で、パスワードを決め直すメールを送れます（届いたリンクは1時間ほどで使えなくなります）。${isAdmin() ? '' : 'エリマネは、担当の院のスタッフを登録できます。'}</p>
   <div class="grid2"><div class="card"><h2>${editing ? '登録を変える' : '新しく登録する'}</h2>
     <form id="fMem" class="memform">
       <label>名前 <input type="text" name="name" value="${esc(ed.name || '')}" placeholder="例：山田 太郎" required></label>
       <label>メールアドレス <input type="email" name="email" value="${esc(ed.email || '')}"${editing ? ' readonly' : ''} required></label>
+      ${editing ? '' : `<label>最初のパスワード（8文字以上）<span class="pwrow"><input type="text" name="pw" value="${esc(ed.pw || '')}" minlength="8" autocomplete="off" required><button type="button" class="btn ghost sm" data-act="genPw">自動で作る</button></span><small class="hint">このパスワードを本人に伝えてください。ログインしたあと、本人が「パスワード変更」で変えられます。</small></label>`}
       ${roleSel}
       <fieldset><legend>見られる院</legend>
         ${areas.length > 1 || isAdmin() ? `<p class="areapick">${areas.map(a => `<button type="button" class="chip" data-act="pickArea" data-a="${esc(a.name)}">${esc(a.name)}をまとめて</button>`).join('')}</p>` : ''}
         <div class="storepick">${choices.map(k => `<label class="ck"><input type="checkbox" name="st" value="${esc(k)}"${checked.has(k) ? ' checked' : ''}>${esc(k)}${isAdmin() && areaOfShort(k) ? `<small>${esc(areaOfShort(k))}</small>` : ''}</label>`).join('') || '<span style="color:var(--sub)">選べる院がありません。</span>'}</div>
         ${isAdmin() ? '<p class="hint">管理者は、ここで選ばなくても全部の院を見られます。</p>' : ''}
       </fieldset>
-      <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button class="btn">${editing ? '変更を保存' : '登録してメールを送る'}</button>${editing ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
+      <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="btn memSubmit">${editing ? '変更を保存' : '登録する'}</button>${editing ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
     </form></div>
   <div class="card"><h2>登録されている人 <small style="color:var(--sub);font-weight:400">${list.length}人</small></h2>
     <table class="memtbl"><tbody>${list.map(m => `<tr><td><b>${esc(m.name || '')}</b><br><small>${esc(m.email)}</small></td><td><span class="role r-${esc(m.role)}">${ROLE[m.role] || esc(m.role)}</span></td>
@@ -1959,13 +1978,15 @@ document.addEventListener('submit', async e => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { flash('メールアドレスの形が正しくありません。'); return; }
   if (role !== 'admin' && !stores.length) { flash('見られる院を、1つ以上選んでください。'); return; }
   if (email === state.me.email) { flash('自分の登録は、ここでは変えられません。'); return; }
-  const before = memberOf(email), isNew = !before;
-  const btn = f.querySelector('button.btn'); btn.disabled = true;
+  const before = memberOf(email), isNew = !before, pw = f.pw ? f.pw.value.trim() : '';
+  if (isNew && pw.length < 8) { flash('最初のパスワードは8文字以上にしてください。'); return; }
+  const btn = f.querySelector('.memSubmit'); btn.disabled = true;
   try {
     await FB.set('members/' + email, { name, role, stores: role === 'admin' ? [] : stores, addedBy: state.me.email, addedAt: (before && before.addedAt) || new Date().toISOString(), updatedAt: new Date().toISOString() });
     if (isNew) {
-      const created = await FB.createAccount(email, backUrl());
-      flash(created ? `${name}さんを登録して、パスワードを決めるメールを送りました。` : `${name}さんを登録しました。このメールアドレスは前から登録があったため、パスワードを決め直すメールを送りました。`);
+      const created = await FB.createAccount(email, backUrl(), pw);
+      if (created) { state.memDone = { name, email, pw }; flash(`${name}さんを登録しました。ログインの案内を本人に伝えてください。`); }
+      else flash(`${name}さんを登録しました。このメールアドレスは前から登録があったため、パスワードを決め直すメールを送りました（迷惑メールも確認してもらってください）。`);
     } else flash(`${name}さんの登録を変えました。`);
     state.memEdit = null; state.memDraft = null; state.memFresh = true; render();
   } catch (err) { btn.disabled = false; flash(denied(err) ? '登録する権限がありません。担当の院だけを選んでいるか確認してください。' : (err && err.code && AUTH_MSG[err.code]) ? AUTH_MSG[err.code] : '登録できませんでした。もう一度お試しください。'); }
@@ -1979,6 +2000,9 @@ document.addEventListener('click', async e => {
     const ar = (state.areasAll || []).find(x => x.name === a.dataset.a); if (!ar) return;
     for (const c of document.querySelectorAll('#fMem input[name=st]')) if (ar.stores.some(x => keyOf(x) && c.value.includes(keyOf(x)))) c.checked = true;
   }
+  else if (act === 'genPw') { const c = 'abcdefghjkmnpqrstuvwxyz23456789', a2 = new Uint32Array(8); crypto.getRandomValues(a2); const v = Array.from(a2, x => c[x % c.length]).join(''); const i = $('#fMem [name=pw]'); if (i) i.value = v; }
+  else if (act === 'copyDone') { const t = $('#doneMsg'); if (t) { try { await navigator.clipboard.writeText(t.value); flash('コピーしました。'); } catch (err) { t.select(); document.execCommand('copy'); flash('コピーしました。'); } } }
+  else if (act === 'closeDone') { state.memDone = null; render(); }
   else if (act === 'memMail') { try { await FB.reset(a.dataset.e, backUrl()); flash(`${a.dataset.e} に、パスワードを決めるメールを送りました。`); } catch (err) { flash(authMsg(err)); } }
   else if (act === 'memDel') {
     const m = memberOf(a.dataset.e); if (!m) return;
@@ -1991,7 +2015,7 @@ document.addEventListener('click', async e => {
 function keepMemDraft() {
   if (state.memFresh) { state.memFresh = false; return; } // 登録・変更・やめるの直後は、前の入力を引き継がない
   const f = $('#fMem'); if (!f) return;
-  state.memDraft = { name: f.name.value, email: f.email.value, role: f.role ? f.role.value : 'staff', stores: [...f.querySelectorAll('input[name=st]:checked')].map(x => x.value) };
+  state.memDraft = { name: f.name.value, email: f.email.value, pw: f.pw ? f.pw.value : '', role: f.role ? f.role.value : 'staff', stores: [...f.querySelectorAll('input[name=st]:checked')].map(x => x.value) };
 }
 
 /* ---- 描画と操作 ---- */
@@ -2091,7 +2115,7 @@ boot();
 <script type="module">
 /* Firebase（ログインとデータの保管庫）につなぐ部分 */
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, reload, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, reload, setPersistence, browserLocalPersistence, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const config = {
@@ -2121,14 +2145,19 @@ window.fbReady(Object.freeze({
   resendVerify: url => sendEmailVerification(auth.currentUser, back(url)),
   refresh: async () => { await reload(auth.currentUser); await auth.currentUser.getIdToken(true); return auth.currentUser; },
   /* 別の人のアカウントを作る。自分のログインが切り替わらないよう、別の接続で作ってすぐ閉じる */
-  createAccount: async (email, url) => {
+  createAccount: async (email, url, pw) => {
     const a2 = initializeApp(config, 'add-' + Date.now()), au2 = getAuth(a2);
     let created = true;
-    try { await createUserWithEmailAndPassword(au2, email, randomPw()); }
+    try { await createUserWithEmailAndPassword(au2, email, pw || randomPw()); }
     catch (e) { if (e.code !== 'auth/email-already-in-use') { await deleteApp(a2).catch(() => {}); throw e; } created = false; }
     await signOut(au2).catch(() => {}); await deleteApp(a2).catch(() => {});
-    await sendPasswordResetEmail(auth, email, back(url));
+    if (!created || !pw) await sendPasswordResetEmail(auth, email, back(url)); // 前から登録がある人は、パスワードを決め直すメールを送る
     return created;
+  },
+  changePassword: async (cur, next) => {
+    const u = auth.currentUser;
+    await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, cur));
+    await updatePassword(u, next);
   },
   get: async p => { const s = await getDoc(ref(p)); return s.exists() ? s.data() : null; },
   set: (p, d, merge) => (merge ? setDoc(ref(p), d, { merge: true }) : setDoc(ref(p), d)),

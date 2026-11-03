@@ -86,6 +86,8 @@ input[type=number]{width:4.6em;text-align:right;padding:5px 8px;min-height:34px}
 .staffbar.area{padding-bottom:10px}
 .staffbar.area button{border-radius:10px;border-left:4px solid var(--ai)}
 .staffbar.area button[aria-pressed=true]{border-left-color:var(--ink)}
+.staffbar.area button.fcb{border-left-color:var(--yamabuki)}
+.staffbar.area .fcsep{align-self:center;font-size:12px;font-weight:700;color:var(--sub);padding:0 2px 0 8px;border-left:1px solid var(--line)}
 .storebar{padding:0 0 14px}
 .storebar .chip small{color:var(--sub);font-size:11px}
 .storebar .chip{min-height:34px}
@@ -328,7 +330,7 @@ table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices in
 .memtbl{width:100%;border-collapse:collapse;font-size:14px} .memtbl td{padding:9px 6px;border-top:1px solid var(--line);vertical-align:top} .memtbl small{color:var(--sub)}
 .memtbl .r{text-align:right;white-space:nowrap}
 .role{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--sunken);white-space:nowrap} .role.r-admin{background:var(--ai-weak);color:var(--ai)} .role.r-am{background:var(--tokiwa-weak);color:var(--tokiwa)}
-.lk.danger{color:var(--shu)} .pwrow{display:flex;gap:6px;align-items:center} .pwrow input{flex:1} .donebox{margin-bottom:16px;border-color:var(--tokiwa)} .donebox textarea{font-size:14px} .top .me .btn.sm{white-space:nowrap} .memtbl .nw{white-space:nowrap}
+.lk.danger{color:var(--shu)} .pwrow{display:flex;gap:6px;align-items:center} .pwrow input{flex:1} .donebox{margin-bottom:16px;border-color:var(--tokiwa)} .donebox textarea{font-size:14px} .top .me .btn.sm{white-space:nowrap} .memtbl .nw{white-space:nowrap} .pickhd{margin:10px 0 4px;font-size:12px;font-weight:700;color:var(--sub)} .role.r-fc{background:var(--yamabuki-weak);color:var(--yamabuki)}
 details.mig{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;font-size:14px} details.mig summary{cursor:pointer;font-weight:700}
 @media (max-width:700px){ .top .me{margin-left:0;width:100%;justify-content:space-between} .top .me span{align-items:flex-start} .memtbl td{display:block;border-top:0;padding:2px 0} .memtbl tr{display:block;border-top:1px solid var(--line);padding:8px 0} .memtbl .r{text-align:left} }
 </style>
@@ -475,6 +477,7 @@ function autoRenewDays(visitDays, start, st) {
 function buildModel(data, settings, asOf, pace, asOfByStore) {
   pace = pace || {}; asOfByStore = asOfByStore || {};
   const st = Object.assign({}, DEFAULT_SETTINGS, settings || {});
+  const stFor = typeof fcStFor === 'function' ? fcStFor(st) : () => st;
   const maxIvl = Math.max(st.d1, st.d2, st.d3, st.renewDays);
   const startDay = st.startDay ? toDay(st.startDay) : null;
 
@@ -510,6 +513,7 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
     const lastValid = rows.filter(r => !r.deleted).pop() || rows[rows.length - 1];
     const home = lastValid.store; // 院は、いちばん新しい予約（キャンセル以外）の院。転院した人は新しい院に入る
     const asOfP = asOfByStore[home] !== undefined ? asOfByStore[home] : asOf; // 院ごとに、CSVを読み込んだ日で判定する
+    const sp = stFor(home), spStart = sp === st ? startDay : (sp.startDay ? toDay(sp.startDay) : null), spAll = sp === st ? everyone : (spStart === null || spStart < dataStart); // FCの院は、そのエリアの設定で判定する
     const days = new Map();
     for (const r of rows) {
       if (!days.has(r.day)) days.set(r.day, { valid: [], deleted: [] });
@@ -619,13 +623,13 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       isTicket: !!tk, isNew: visits.some(v => v.isNew),
       used: null, seen: 0, remaining: null, target: null, limit: null, overdue: null, plan: [], endDay: null,
       status: 'none', renewSoon: false,
-      tracked: tickets.some(t => t.known && (startDay === null || t.start >= startDay)) || (everyone && !!tk), pace: null, was: null,
+      tracked: tickets.some(t => t.known && (spStart === null || t.start >= spStart)) || (spAll && !!tk), pace: null, was: null, st: sp,
     };
     /* この患者さんの来院ペース：個別に選んだもの → 更新の回数券は更新前の実績 → 初めての回数券は段階ペース */
     const manual = Number(pace[cid]) > 0 ? Number(pace[cid]) : null;
-    const auto = !tk ? null : !tk.known ? Object.assign(autoRenewDays(visitDays, Infinity, st), { own: true }) // 購入日が分からない人は、これまでの来院間隔から
-      : tk.renewal ? autoRenewDays(visitDays, tk.start, st) : null;
-    const ivl = n => manual || (auto ? auto.days : stagedInterval(n, st));
+    const auto = !tk ? null : !tk.known ? Object.assign(autoRenewDays(visitDays, Infinity, sp), { own: true }) // 購入日が分からない人は、これまでの来院間隔から
+      : tk.renewal ? autoRenewDays(visitDays, tk.start, sp) : null;
+    const ivl = n => manual || (auto ? auto.days : stagedInterval(n, sp));
     if (tk) p.pace = { manual, auto, mode: manual ? 'manual' : (auto ? 'auto' : 'staged') };
 
     if (last) {
@@ -635,10 +639,10 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       if (active) {
         const nextNo = p.used !== null ? Math.floor(p.used) + 1 : null;
         p.target = base + ivl(nextNo || 1);
-        p.limit = p.target + st.tol;
+        p.limit = p.target + sp.tol;
         p.overdue = asOfP - p.target;
         p.status = booking ? (booking.day > p.limit ? 'late' : 'ok') : (cancelledNext ? 'cancelled' : 'nobook');
-        p.renewSoon = p.remaining !== null && p.remaining <= st.soon;
+        p.renewSoon = p.remaining !== null && p.remaining <= sp.soon;
         if (p.used !== null) {
           tk.uses.forEach((d, i) => p.plan.push({ n: i + 1, day: d, kind: 'done' }));
           let n = Math.floor(p.used) + 1, d = booking ? booking.day : Math.max(p.target, asOfP);
@@ -657,7 +661,7 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
       p.status = booking ? 'ok' : 'none';
     }
     /* 予約がないまま長く来ていない人は、要フォローとは別に分ける */
-    if (last && !booking && asOfP - last.day >= st.awayDays && (p.status === 'cancelled' || p.status === 'nobook')) { p.was = p.status; p.status = 'away'; p.renewSoon = false; }
+    if (last && !booking && asOfP - last.day >= sp.awayDays && (p.status === 'cancelled' || p.status === 'nobook')) { p.was = p.status; p.status = 'away'; p.renewSoon = false; }
     patients.push(p);
   }
 
@@ -712,7 +716,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '10/28-1';
+const APP_VER = '11/3-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -780,7 +784,18 @@ const sid = full => shortStore(full); // 保存に使う院のID
 const myStores = () => (state.me && Array.isArray(state.me.stores) ? state.me.stores : []);
 const canUploadStore = full => isAdmin() || (isAM() && myStores().includes(sid(full)));
 const canUpload = () => isAdmin() || isAM();
-const canManage = () => isAdmin(); // 設定とエリアを変えられるのは管理者だけ
+const canManage = () => isAdmin(); // 金額とエリアを変えられるのは管理者だけ
+/* 直営かFCか：メンバーの team に、直営なら「直営」、FCならそのFCのエリア名が入る */
+const DIRECT = '直営';
+const myTeam = () => (state.me && state.me.team) || DIRECT;
+const isFcOwnerOf = a => !!a && isAM() && myTeam() === a; // FCオーナーは、自分のエリアの目安を変えられる
+const areaOfShortName = k => (state.areasAll || []).find(a => a.stores.some(x => keyOf(x) && k.includes(keyOf(x)))) || null;
+function teamOf(role, stores) {
+  if (role === 'admin' || !stores || !stores.length) return DIRECT;
+  const as = stores.map(areaOfShortName), a = as[0];
+  return a && a.fc && as.every(x => x === a) ? a.name : DIRECT;
+}
+const roleLabel = m => (m.role === 'am' && m.team && m.team !== DIRECT ? 'FCオーナー' : ROLE[m.role] || m.role);
 
 /* ---- この端末での一時保存 ----
    2回目からは同じデータを取り直さずに済むよう、来院の記録をブラウザに置いておく。患者さんの氏名は置かず、毎回取りにいく。ログアウトすると消す。 */
@@ -876,6 +891,11 @@ async function saveStore(full, src, asOf, label) {
   storeData[s] = { data: d, version, name: full, asOf, savedAt, partIds: parts.map(p => p.id) };
   if (loadingVer[s] === version) delete loadingVer[s];
 }
+function saveFcSet(a) {
+  if (!FB || !isAdmin() && !isFcOwnerOf(a)) return;
+  const body = Object.assign({}, (state.fcSet || {})[a] || {});
+  enqueue(() => FB.set('fcset/' + a, body).then(() => flash(`${a}の設定を保存しました。`), () => flash('設定を保存できませんでした。通信状態を確認してください。')));
+}
 function saveSettings() {
   if (!FB || !canManage()) return;
   const body = Object.assign({}, state.settings);
@@ -965,12 +985,14 @@ function onMetas(list, first) {
 }
 async function startData() {
   state.dbState = 'loading'; rebuild();
+  unsubs.push(FB.watchList('fcset', list => { const m = {}; for (const x of list) m[x.id] = x.data || {}; state.fcSet = m; rebuild(); }, () => {}));
   unsubs.push(FB.watch('config/settings', (x, pending) => { if (pending) return; state.settings = Object.assign({}, DEFAULT_SETTINGS, x || {}); rebuild(); }, () => {}));
   unsubs.push(FB.watch('config/areas', (x, pending) => {
     if (pending) return;
-    state.areasAll = normAreas(x ? x.list : []);
-    state.areas = isAdmin() ? state.areasAll : state.areasAll.map(a => ({ name: a.name, stores: a.stores.filter(st => myStores().some(m => keyOf(m) && shortStore(st).includes(keyOf(m)))) })).filter(a => a.stores.length);
-    if (wantArea !== null) { if (wantArea === NO_AREA || state.areas.some(a => a.name === wantArea)) state.area = wantArea; wantArea = null; }
+    state.areasAll = normAreas(x ? x.list : []); state.areasLoaded = true;
+    state.areas = isAdmin() ? state.areasAll : state.areasAll.map(a => Object.assign({}, a, { stores: a.stores.filter(st => myStores().some(m => keyOf(m) && shortStore(st).includes(keyOf(m)))) })).filter(a => a.stores.length);
+    backfillTeams();
+    if (wantArea !== null) { if (wantArea === NO_AREA || wantArea === FC_ALL || state.areas.some(a => a.name === wantArea)) state.area = wantArea; wantArea = null; }
     if (!isAdmin() && state.areas.length === 1) state.area = state.areas[0].name; // 担当が1エリアだけなら、最初からそのエリア
     rebuild();
   }, () => {}));
@@ -1021,7 +1043,7 @@ function gate(kind, msg) {
       <label>パスワード<input type="password" name="pw" autocomplete="current-password" required></label>
       <button class="btn wide">ログイン</button></form>
       <p class="galt"><button class="lk" data-act="forgot">パスワードを忘れた・まだ決めていない</button></p>
-      <p class="gnote">アカウントは、エリマネか管理者が登録します。登録されると「パスワードの再設定」のメールが届くので、そこでパスワードを決めてください。メールが見つからないときは、迷惑メールのフォルダも見てください。</p>`);
+      <p class="gnote">アカウントは、エリマネか管理者が登録します。最初のパスワードは、登録した人から教えてもらってください。</p>`);
   else if (kind === 'verify') g.innerHTML = box(`<p><b>${esc(FB.auth.currentUser.email)}</b> に確認のメールを送りました。メールのリンクを押してから、下のボタンを押してください。</p>
       <p><button class="btn wide" data-act="verified">確認しました</button></p>
       <p class="galt"><button class="lk" data-act="resend">確認メールをもう一度送る</button>　<button class="lk" data-act="logout">ログアウト</button></p>`);
@@ -1055,16 +1077,24 @@ async function onUser(user) {
     if (x.role !== state.me.role || JSON.stringify(x.stores || []) !== JSON.stringify(state.me.stores || [])) location.reload();
     else { state.me = Object.assign({ email }, x); renderMe(); }
   }, () => {}));
-  if (canUpload()) unsubs.push(FB.watchList('members', list => { state.members = list; if (state.tab === 'mem') render(); }, () => {}));
+  if (isAdmin()) unsubs.push(FB.watchList('members', list => { state.members = list; backfillTeams(); if (state.tab === 'mem') render(); }, () => {}));
+  else if (isAM()) unsubs.push(FB.watchWhere('members', 'team', myTeam(), list => { state.members = list; if (state.tab === 'mem') render(); }, () => {})); // エリマネ・FCオーナーは、同じ直営／同じFCの人だけ
   if (location.hash === '#setup') history.replaceState(null, '', location.pathname);
   gate(null); renderMe();
   if (state.tab === 'mem' && !canUpload()) state.tab = 'follow';
   await startData();
 }
+/* 前からいる人に、直営かFCかの印（team）を付ける。管理者が開いたときに1回だけ */
+let teamsDone = false;
+function backfillTeams() {
+  if (teamsDone || !isAdmin() || !state.members.length || !state.areasLoaded) return;
+  teamsDone = true;
+  for (const x of state.members) if (!x.data.team) { const t = teamOf(x.data.role, x.data.stores); enqueue(() => FB.set('members/' + x.id, { team: t }, true).catch(() => {})); }
+}
 function renderMe() {
   const m = state.me, b = $('#meBox'); if (!b) return;
   b.hidden = !m;
-  if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${ROLE[m.role] || ''}</small></span><button class="btn ghost sm" data-act="chpw">パスワード変更</button><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
+  if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${roleLabel(m)}</small></span><button class="btn ghost sm" data-act="chpw">パスワード変更</button><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
   const t = $('#tabMem'); if (t) t.hidden = !canUpload();
 }
 async function boot() {
@@ -1145,14 +1175,15 @@ const shortStore = s => { const t = String(s || '').trim().split(/[\s\u3000]+/).
 const keyOf = s => shortStore(s).replace(/院$/, '');
 function normAreas(list) {
   return (Array.isArray(list) ? list : []).filter(a => a && a.name && Array.isArray(a.stores))
-    .map(a => ({ name: String(a.name), stores: a.stores.map(x => String(x).trim()).filter(Boolean) }));
+    .map(a => Object.assign({ name: String(a.name), stores: a.stores.map(x => String(x).trim()).filter(Boolean) }, a.fc ? { fc: true } : {}));
 }
 function parseAreas(text) {
   const out = [];
   for (const line of String(text).split(/\n/)) {
     const m = line.match(/^\s*(.+?)\s*[：:]\s*(.*)$/); if (!m) continue;
     const stores = m[2].split(/[・、,，\s\u3000]+/).map(x => x.trim()).filter(Boolean);
-    if (stores.length) out.push({ name: m[1], stores });
+    const fc = /[（(]\s*FC\s*[)）]\s*$/i.test(m[1]), name = m[1].replace(/\s*[（(]\s*FC\s*[)）]\s*$/i, '').trim(); // 「○○オーナー（FC）：…」と書くとFCのエリア
+    if (stores.length && name) out.push(Object.assign({ name, stores }, fc ? { fc: true } : {}));
   }
   return out;
 }
@@ -1163,7 +1194,32 @@ function areaOf(store) {
   for (const a of state.areas) if (a.stores.some(x => { const q = keyOf(x); return q && k.includes(q); })) { hit = a.name; break; }
   areaMemo.set(store, hit); return hit;
 }
-const inArea = (store, name) => !name || (areaOf(store) || NO_AREA) === name;
+/* 直営とFC：エリアに「（FC）」が付いていればFC。本部の画面では「全エリア」は直営だけ、FCは「FC全体」にまとめる */
+const FC_ALL = 'FC全体';
+const areaObjOf = store => { const n = areaOf(store); return n ? state.areas.find(a => a.name === n) || null : null; };
+const isFcStore = store => { const a = areaObjOf(store); return !!(a && a.fc); };
+const fcSplit = () => state.areas.some(a => a.fc) && state.areas.some(a => !a.fc); // 直営とFCの両方が見える人だけ、分けて表示する
+const inArea = (store, name) => !name ? (!fcSplit() || !isFcStore(store)) : name === FC_ALL ? isFcStore(store) : (areaOf(store) || NO_AREA) === name;
+/* FCのエリアは、目安の設定をエリアごとに持てる（回数券の金額は全体で共通） */
+const FC_KEYS = ['b1', 'd1', 'b2', 'd2', 'd3', 'renewDays', 'tol', 'soon', 'awayDays', 'alertDays', 'startDay', 'renewRate'];
+function withFc(base, a) {
+  const o = (state.fcSet || {})[a]; if (!o) return base;
+  const out = Object.assign({}, base); for (const k of FC_KEYS) if (o[k] !== undefined && o[k] !== null) out[k] = o[k];
+  return out;
+}
+function fcStFor(st) { // 院ごとの設定（FCの院はそのエリアの設定）を返す関数
+  areaMemo.clear(); const cache = new Map();
+  return home => { if (!cache.has(home)) { const a = areaObjOf(home); cache.set(home, a && a.fc ? withFc(st, a.name) : st); } return cache.get(home); };
+}
+function fcAreaNow() { // いま見ている範囲がFCの1エリアなら、そのエリア名
+  if (state.store) { const a = areaObjOf(state.store); return a && a.fc ? a.name : ''; }
+  const a = state.areas.find(x => x.name === state.area); if (a) return a.fc ? a.name : '';
+  if (!state.area && state.areas.length === 1 && state.areas[0].fc) return state.areas[0].name;
+  return '';
+}
+const curSet = () => { const a = fcAreaNow(); return a ? withFc(model.settings, a) : model.settings; };
+const pSet = p => p.st || model.settings;
+const canEditSet = () => canManage() || isFcOwnerOf(fcAreaNow());
 const storeAsOf = s => (state.asOfByStore[s] !== undefined ? state.asOfByStore[s] : state.asOf);
 const tanto = p => (state.single ? '' : shortStore(p.store) + '　') + '担当 ' + p.staff;
 let wantArea = null; try { wantArea = localStorage.getItem('raiin-area'); } catch (e) { /* 保存領域が使えない環境では毎回「全エリア」から始まる */ }
@@ -1206,21 +1262,23 @@ function renderChrome() {
   areaMemo.clear();
   const all = model.patients.filter(p => p.last && p.tracked && !isHidden(p)), dataStores = model.stores;
   const hasAreas = state.areas.length > 0, attn = ps => ps.filter(p => ATTN.includes(p.status)).length;
-  const areaNames = state.areas.map(a => a.name);
+  const split = fcSplit(), areaNames = state.areas.filter(a => !split || !a.fc).map(a => a.name);
   if (hasAreas && dataStores.some(s => !areaOf(s))) areaNames.push(NO_AREA);
-  if (state.area && !areaNames.includes(state.area)) state.area = '';
+  const fcNames = split ? [FC_ALL].concat(state.areas.filter(a => a.fc).map(a => a.name)) : [];
+  if (state.area && !areaNames.includes(state.area) && !fcNames.includes(state.area)) state.area = '';
   const withData = name => dataStores.filter(s => inArea(s, name));
 
   const ab = $('#areaBar'); ab.hidden = !hasAreas;
-  ab.innerHTML = hasAreas ? [''].concat(areaNames).map(n => {
+  const areaBtn = n => {
     const has = withData(n).length;
-    return `<button data-area="${esc(n)}" aria-pressed="${n === state.area}"><span>${n ? esc(n) : '全エリア'}</span><small>${has ? '要フォロー ' + attn(all.filter(p => inArea(p.store, n))) + '人' : 'データなし'}</small></button>`;
-  }).join('') : '';
+    return `<button data-area="${esc(n)}" aria-pressed="${n === state.area}"${n === FC_ALL || (split && state.areas.some(a => a.fc && a.name === n)) ? ' class="fcb"' : ''}><span>${n ? esc(n) : split ? '全エリア（直営）' : '全エリア'}</span><small>${has ? '要フォロー ' + attn(all.filter(p => inArea(p.store, n))) + '人' : 'データなし'}</small></button>`;
+  };
+  ab.innerHTML = hasAreas ? [''].concat(areaNames).map(areaBtn).join('') + (fcNames.length ? '<span class="fcsep">FC</span>' + fcNames.map(areaBtn).join('') : '') : '';
 
   /* いまの範囲に含まれる院（エリアを選んだときは、まだCSVがない院も並べる） */
   let list = [];
   if (state.area) {
-    const conf = (state.areas.find(a => a.name === state.area) || { stores: [] }).stores, wd = withData(state.area), seen = new Set();
+    const conf = state.area === FC_ALL ? [].concat(...state.areas.filter(a => a.fc).map(a => a.stores)) : (state.areas.find(a => a.name === state.area) || { stores: [] }).stores, wd = withData(state.area), seen = new Set();
     for (const c of conf) { const full = wd.find(s => shortStore(s).includes(keyOf(c))); if (full) { if (seen.has(full)) continue; seen.add(full); } list.push({ full: full || '', short: full ? shortStore(full) : c, has: !!full }); }
     for (const s of wd) if (!seen.has(s)) list.push({ full: s, short: shortStore(s), has: true });
   } else if (!hasAreas && dataStores.length > 1) list = dataStores.map(s => ({ full: s, short: shortStore(s), has: true }));
@@ -1235,8 +1293,8 @@ function renderChrome() {
     ? `<button class="chip" data-store="${esc(x.full)}" aria-pressed="${x.full === state.store}">${esc(x.short)} <b>${attn(all.filter(p => p.store === x.full))}</b></button>`
     : `<button class="chip" disabled>${esc(x.short)} <small>データなし</small></button>`).join('') : '';
 
-  $('#storeName').textContent = state.store ? shortStore(state.store) : state.area ? state.area : hasAreas ? '全エリア' : (dataStores.length > 1 ? `${dataStores.length}院` : (dataStores[0] || 'データ未読込'));
-  const sd = model.settings.startDay ? toDay(model.settings.startDay) : null;
+  $('#storeName').textContent = state.store ? shortStore(state.store) : state.area ? state.area : hasAreas ? (split ? '全エリア（直営）' : '全エリア') : (dataStores.length > 1 ? `${dataStores.length}院` : (dataStores[0] || 'データ未読込'));
+  const sd0 = curSet().startDay, sd = sd0 ? toDay(sd0) : null;
   const when = state.single ? `${mdw(storeAsOf(state.single))} 時点のデータ` : `${scopeStores.length}院のデータ`;
   $('#asOfLabel').textContent = model.counts.res ? `${when}　${sd !== null && sd >= model.dataStart ? md(sd) + ' 以降に回数券を買った患者さん' : '回数券で通っている患者さん'} ${visible().length}人` : '';
   const today = todayDay();
@@ -1266,13 +1324,13 @@ function emptyHTML() {
   if (state.dbState === 'loading') return '<div class="list"><div class="empty">読み込み中です…</div></div>';
   if (!model.counts.res) return `<div class="list"><div class="empty">${canUpload() ? 'データがありません。上の「CSVを入れる」から、Quick ReserveのCSVを入れてください。' : 'まだデータが入っていません。エリマネか管理者がCSVを入れると、ここに表示されます。'}</div></div>`;
   if (state.area && !state.storeList.some(x => x.has)) return '<div class="list"><div class="empty">このエリアのCSVは、まだ読み込まれていません。上の「CSVを入れる」から、このエリアの院のCSVを入れてください。</div></div>';
-  if (!visible().length) return `<div class="list"><div class="empty">${model.settings.startDay ? md(toDay(model.settings.startDay)) + ' 以降に' : ''}回数券を買った患者さんは、まだいません。購入があった日のCSVを読み込むと、ここに並びます。</div></div>`;
+  if (!visible().length) return `<div class="list"><div class="empty">${curSet().startDay ? md(toDay(curSet().startDay)) + ' 以降に' : ''}回数券を買った患者さんは、まだいません。購入があった日のCSVを読み込むと、ここに並びます。</div></div>`;
   return '<div class="list"><div class="empty">当てはまる患者さんはいません。</div></div>';
 }
 
 /* ---- 要フォローの基準（いまの設定の数字で表示） ---- */
 function critHTML() {
-  const st = model.settings;
+  const st = curSet();
   return `<table class="crit">
     <tr><th colspan="2">要フォローに数える</th></tr>
     <tr><td><span class="n s-cancelled">${LABEL.cancelled}</span></td><td>最後の来院より後の予約をキャンセルして、取り直していない</td></tr>
@@ -1326,13 +1384,14 @@ function openList(i) {
   const dlg = $('#dlg'); if (!dlg.open) dlg.showModal(); dlg.scrollTop = 0;
 }
 function areaTable() {
-  const all = model.patients.filter(p => p.last && p.tracked && !isHidden(p)), names = state.areas.map(a => a.name);
-  if (model.stores.some(s => !areaOf(s))) names.push(NO_AREA);
+  const fcv = state.area === FC_ALL, split = fcSplit();
+  const all = model.patients.filter(p => p.last && p.tracked && !isHidden(p) && inArea(p.store, state.area)), names = state.areas.filter(a => !split || !a.fc === !fcv).map(a => a.name);
+  if (!fcv && model.stores.some(s => !areaOf(s))) names.push(NO_AREA);
   const rows = names.map(n => {
     const wd = model.stores.filter(s => inArea(s, n)), conf = (state.areas.find(a => a.name === n) || { stores: wd }).stores.length;
     return { cell: `<button class="lk" data-area="${esc(n)}">${esc(n)}</button>`, label: n + 'の', extra: `${wd.length}/${Math.max(conf, wd.length)}院`, ps: all.filter(p => inArea(p.store, n)), nodata: !wd.length };
   });
-  return sumTable('エリア別のまとめ', 'エリア名を押すと、そのエリアだけに切り替わります。「データあり」は、CSVが読み込まれている院の数です。', 'エリア', 'データあり', rows, all);
+  return sumTable(fcv ? 'FCのオーナー別のまとめ' : split ? '直営のエリア別のまとめ' : 'エリア別のまとめ', 'エリア名を押すと、そのエリアだけに切り替わります。「データあり」は、CSVが読み込まれている院の数です。', 'エリア', 'データあり', rows, all);
 }
 function storeTable() {
   const all = visible(), today = todayDay();
@@ -1355,7 +1414,7 @@ const headFor = ct => `<div class="lrow head${ct ? ' hasact' : ''}"><span>患者
 function rowHTML(p, ct) {
   const today = dayISO(todayDay()), list = ct ? contactsOf(p) : [], lock = state.canWrite ? '' : ' disabled';
   const acts = !ct ? '' : `<span class="acts">${['line', 'letter'].map(m => { const r = recentSent(p, m), on = !!r, isToday = !!r && r.d === today; return `<button class="tick" data-tick="${m}" data-pid="${esc(p.id)}" aria-pressed="${on}"${lock} title="${isToday ? '今日の記録を取り消す' : on ? md(toDay(r.d)) + 'に送信済み' : '送ったことを記録する'}"><i aria-hidden="true"></i>${METHOD[m]}${on && !isToday ? `<small class="tkd">${md(toDay(r.d))}</small>` : ''}</button>`; }).join('')}<button class="hidebtn" data-hide="${esc(p.id)}"${lock} title="要フォローの一覧から外す">外す</button></span>`;
-  const alert = !p.booking && ['cancelled', 'nobook', 'away'].includes(p.status) && p.asOf - p.last.day >= model.settings.alertDays; // 予約がなく長く空いている人は薄い赤
+  const alert = !p.booking && ['cancelled', 'nobook', 'away'].includes(p.status) && p.asOf - p.last.day >= pSet(p).alertDays; // 予約がなく長く空いている人は薄い赤
   return `<div class="lrow s-${p.status}${ct ? ' hasact' : ''}${alert ? ' alert' : ''}" data-id="${esc(p.id)}" role="button" tabindex="0">
     <span class="who"><i class="dot"></i><span class="nmbox"><span class="nm" style="display:block">${esc(pname(p))}</span><small>${esc(tanto(p))}</small></span>${acts.replace('class="acts"', 'class="acts in-who"')}</span>
     <span><span class="tag${p.renewSoon ? ' soon' : ''}">${esc(ticketText(p))}</span></span>
@@ -1378,7 +1437,7 @@ function statusAt(p, c) {
   const d = toDay(c.d), before = p.visits.filter(v => v.day <= d);
   if (!before.length) return 'other';
   const lv = before[before.length - 1].day;
-  if (d - lv >= model.settings.awayDays) return 'away';
+  if (d - lv >= pSet(p).awayDays) return 'away';
   if ((p.cancels || []).some(x => x > lv && x <= d + 14)) return 'cancelled';
   return 'nobook';
 }
@@ -1458,7 +1517,7 @@ function viewFollow() {
   let h = `<p class="guide">声をかけたい順に並べています。行を押すと、その人の来院カレンダーとこの先の目安が開き、来院ペースも変えられます。</p>
     <details class="critbox" data-g="crit"${state.open.crit ? ' open' : ''}><summary>要フォローの基準</summary>${critHTML()}</details>`;
   if (!state.staff) {
-    if (state.areas.length && !state.area && !state.store) h += areaTable();
+    if (state.areas.length && (!state.area || state.area === FC_ALL) && !state.store) h += areaTable();
     else if (state.storeList.length && !state.store) h += storeTable();
   }
   if (state.single) h += staffTable(); // 担当者を選んでいるときは、その人だけのまとめ
@@ -1503,7 +1562,7 @@ function viewCal() {
   if (!rows.length) return h + emptyHTML();
   const cs = getComputedStyle(document.documentElement);
   const cell = parseFloat(cs.getPropertyValue('--cell')) || 16;
-  const tol = model.settings.tol, a = Math.max(...rows.map(p => p.asOf)), from = Math.max(model.dataStart, a - 91);
+  const tol = curSet().tol, a = Math.max(...rows.map(p => p.asOf)), from = Math.max(model.dataStart, a - 91);
   let to = Math.max(a + 28, model.dataEnd);
   for (const p of rows) { if (p.booking) to = Math.max(to, p.booking.day + 2); if (p.target !== null && !done(p)) to = Math.max(to, p.target + tol + 2); }
   to = Math.min(to, a + 70);
@@ -1580,18 +1639,18 @@ function viewRenew() {
   if (!keys.includes(state.month)) state.month = keys.includes(thisMonth) ? thisMonth : (keys.find(k => k > thisMonth) || keys[keys.length - 1] || null);
   const max = Math.max(1, ...keys.map(k => months.get(k).length));
   const mlabel = k => `${+k.slice(0, 4)}年${+k.slice(5)}月`;
-  const rate = Math.max(0, Math.min(100, Number(model.settings.renewRate) || 0));
+  const rate = Math.max(0, Math.min(100, Number(curSet().renewRate) || 0));
   const sum = rs => rs.reduce((a, r) => a + (priceOf(r.t.type) || 0), 0);
   const noPrice = rowsAll.filter(r => !priceOf(r.t.type)), noTypes = [...new Set(noPrice.map(r => r.t.type))];
   /* 参考：実際の更新率（更新のタイミングを迎えた人のうち、回数券を買った人） */
-  const sd0 = model.settings.startDay ? toDay(model.settings.startDay) : null;
+  const sd0 = curSet().startDay ? toDay(curSet().startDay) : null;
   const rp = model.renewPoints.filter(x => x.p.last && x.t.known && (sd0 === null || x.t.start >= sd0) && (!state.staff || x.p.staff === state.staff) && inArea(x.p.store, state.area) && (!state.store || x.p.store === state.store));
   const yes = rp.filter(x => x.renewed).length;
 
   let top = `<p class="guide">この先、いつ・何人の回数券が終了するかと、更新の売上見込みです。月の一覧で、更新の提案予定を選べます。</p>`;
   top += `<div class="card" style="margin-bottom:20px"><h2>回数券が終了する見込みと、更新の売上見込み</h2>
     <p>今のペースで通った場合に最後の1回が来る月です（過去3か月は、実際に終わった月）。「見込み」は全員が同じ回数券で更新した場合に更新率をかけた金額、「提案予定」はスタッフが選んだ回数券の合計、「実績」は更新の回数券をその月に買った人の入金の合計です（CSVで分かった分。分割払いは、それまでの入金の合計）。</p>
-    <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canManage() ? '' : ' disabled'}> %</label>
+    <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canEditSet() ? '' : ' disabled'}> %</label>
       ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
   if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
@@ -1630,7 +1689,7 @@ function viewRenew() {
   if (soon.length) {
     const done = soon.filter(callOf).length, open = state.open.soon !== false;
     top += `<details class="card soonbox" data-g="soon"${open ? ' open' : ''}><summary><h2>そろそろ更新の声かけをする患者さん <small>${soon.length}人・声かけ済み ${done}人</small><span class="oc">${open ? '閉じる' : '開く'}</span></h2></summary>
-      <p>回数券の残りが${model.settings.soon}回以下です。声をかけたら「声かけ済み」を押してください。もう一度押すと取り消せます。</p><div class="mini calls">` +
+      <p>回数券の残りが${curSet().soon}回以下です。声をかけたら「声かけ済み」を押してください。もう一度押すと取り消せます。</p><div class="mini calls">` +
       soon.map(p => { const c = callOf(p); return `<div class="crow"><button data-id="${esc(p.id)}"><span><b>${esc(pname(p))}</b> <small>${esc(tanto(p))}</small></span><span>${esc(p.tk.type)} 残り${p.remaining}回 <small>${p.booking ? '次回 ' + mdw(p.booking.day) : '次回予約なし'}</small></span></button><button class="tick" data-call="${esc(p.id)}" aria-pressed="${!!c}"><i></i>${c ? `声かけ済み ${md(toDay(c))}` : '声かけ済み'}</button></div>`; }).join('') + '</div></details>';
   }
   return top;
@@ -1669,11 +1728,11 @@ function viewCsv() {
   const rows = [], seen = new Set();
   for (const a of state.areas) for (const x of a.stores) {
     const full = model.stores.find(st => shortStore(st).includes(keyOf(x))); if (full) seen.add(full);
-    if (!state.area || state.area === a.name) rows.push({ area: a.name, short: full ? shortStore(full) : x, d: full ? storeAsOf(full) : null });
+    if (!state.area || state.area === a.name || (state.area === FC_ALL && a.fc)) rows.push({ area: a.name, short: full ? shortStore(full) : x, d: full ? storeAsOf(full) : null });
   }
   for (const st of model.stores) if (!seen.has(st) && (!state.area || state.area === NO_AREA)) rows.push({ area: state.areas.length ? NO_AREA : '', short: shortStore(st), d: storeAsOf(st) });
   const dateCell = d => d === null ? '<span style="color:var(--sub)">まだ入っていません</span>' : (today - d >= 3 ? `<span class="n s-late">${md(d)}</span>` : md(d));
-  const showArea = !state.area && state.areas.length > 0;
+  const showArea = (!state.area || state.area === FC_ALL) && state.areas.length > 0;
   return `<p class="guide">Quick Reserveから出したCSVをここに入れると、その院を見ている全員の画面が最新になります。週に1回が目安です。</p><div class="grid2 csv">
   <div class="card"><h2>Quick Reserveで出すもの</h2><p>院ごとに、同じ手順をくり返します。</p>
     <ol class="steps">
@@ -1709,9 +1768,9 @@ function viewCsv() {
 
 /* ---- 設定 ---- */
 function viewSet() {
-  const s = model.settings, c = model.counts, adm = canManage(), dis = adm ? '' : ' disabled';
+  const s = curSet(), c = model.counts, adm = canManage(), fcA = fcAreaNow(), ed = canEditSet(), dis = ed ? '' : ' disabled';
   const num = (k, min, max) => `<input type="number" inputmode="numeric" min="${min}" max="${max}" value="${s[k]}" data-set="${k}" aria-label="${k}"${dis}>`;
-  return `<p class="guide">${adm ? '対象にする患者さん、判定に使う目安、エリアと院の割り振りを変えられます。ここで変えた内容は、このページを見る全員に反映されます。' : '設定を変えられるのは、管理者だけです。'}</p><div class="grid2">
+  return `<p class="guide">${fcA ? `<b>${esc(fcA)}の設定です。</b>対象にする患者さんと目安は、${esc(fcA)}の院だけに使われます。${ed ? '' : '変えられるのは、オーナーと管理者だけです。'}` : adm ? '対象にする患者さん、判定に使う目安、エリアと院の割り振りを変えられます。ここで変えた内容は、このページを見る全員に反映されます。' + (fcSplit() ? 'FCのエリアの目安は、上でそのエリアを選ぶと変えられます。' : '') : '設定を変えられるのは、管理者だけです。'}</p><div class="grid2">
   <div class="card"><h2>対象にする患者さん</h2><p>この日以降に回数券を買った患者さんだけを表示します。空にするか、データのいちばん古い日より前の日付にすると、回数券で通っている全員が対象になります（データより前に買った人は、残り回数なしで表示します）。</p>
     <label>開始日 <input type="date" id="startDay" value="${esc(s.startDay || '')}"${dis}></label>
     <h2 style="margin-top:24px">来院ペースの目安</h2><p>全員に当てはめる基準です。患者さんごとのペースは、一覧から名前を押して変えられます。</p>
@@ -1727,15 +1786,15 @@ function viewSet() {
       最後の来院から ${num('alertDays', 7, 120)}日以上で次の予約がない人は、一覧の行を薄い赤にする<br>
       最後の来院から ${num('awayDays', 14, 365)}日以上で次の予約がない人は「しばらく来ていない」に分ける
     </div>
-    ${adm ? '<p style="margin:12px 0 0"><button class="btn ghost" data-act="resetSet">目安を初期値に戻す</button></p>' : ''}
+    ${ed ? '<p style="margin:12px 0 0"><button class="btn ghost" data-act="resetSet">目安を初期値に戻す</button></p>' : ''}
   </div>
   ${adm ? (() => { const n = model.patients.reduce((a, p) => a + contactsOf(p).length - countedContacts(p).length, 0); return `<div class="card"><h2>LINE・手紙の重複</h2><p>同じ患者さんに同じ方法で、30日以内に2回以上チェックが付いている記録です。いちばん古い記録を残して、ほかを消します。</p>
     ${n ? `<p><b>${n}件</b>見つかりました。</p><p><button class="btn" data-act="dedupeCt">重複を整理する</button></p>` : '<p style="color:var(--sub)">重複はありません。</p>'}</div>`; })() : ''}
   <div class="card"><h2>回数券の金額</h2><p>「更新見込み」の売上見込みに使います。同じ回数券で更新した場合の金額です。</p>
-    <table class="prices">${(() => { const pr = Object.assign({}, DEFAULT_PRICES, s.prices || {}); const types = [...new Set(Object.keys(pr).concat(model.patients.filter(p => p.tk && p.tk.known && /^[A-Z]+\d+$/.test(p.tk.type)).map(p => p.tk.type)))].sort((a, b) => a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, '')) || parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, ''))); return types.map(t => `<tr><td>${esc(t)}</td><td class="r">¥ <input type="number" inputmode="numeric" min="0" step="500" value="${pr[t] || ''}" data-price="${esc(t)}" aria-label="${esc(t)}の金額" placeholder="未設定"${dis}></td></tr>`).join(''); })()}</table>
+    <table class="prices">${(() => { const pr = Object.assign({}, DEFAULT_PRICES, s.prices || {}); const types = [...new Set(Object.keys(pr).concat(model.patients.filter(p => p.tk && p.tk.known && /^[A-Z]+\d+$/.test(p.tk.type)).map(p => p.tk.type)))].sort((a, b) => a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, '')) || parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, ''))); return types.map(t => `<tr><td>${esc(t)}</td><td class="r">¥ <input type="number" inputmode="numeric" min="0" step="500" value="${pr[t] || ''}" data-price="${esc(t)}" aria-label="${esc(t)}の金額" placeholder="未設定"${adm ? '' : ' disabled'}></td></tr>`).join(''); })()}</table>
   </div>
-  <div class="card"><h2>エリアと院</h2><p>1行に1エリアで「エリア名：院名・院名…」と書きます。院名は、Quick Reserveの店舗名に入っている名前（千葉院など）にしてください。</p>
-    <textarea id="areasText" rows="${Math.max(4, state.areas.length + 1)}" aria-label="エリアと院"${dis}>${esc(state.areas.map(a => a.name + '：' + a.stores.join('・')).join('\n'))}</textarea>
+  <div class="card"><h2>エリアと院</h2><p>1行に1エリアで「エリア名：院名・院名…」と書きます。院名は、Quick Reserveの店舗名に入っている名前（千葉院など）にしてください。FCのエリアは、名前のうしろに「（FC）」を付けます（例：山田オーナー（FC）：○○院・△△院）。</p>
+    <textarea id="areasText" rows="${Math.max(4, state.areas.length + 1)}" aria-label="エリアと院"${adm ? '' : ' disabled'}>${esc(state.areas.map(a => a.name + (a.fc ? '（FC）' : '') + '：' + a.stores.join('・')).join('\n'))}</textarea>
     ${adm ? '<p style="margin:10px 0 0"><button class="btn" data-act="saveAreas">エリアを保存</button></p>' : ''}
     ${state.areas.length && model.stores.some(x => !areaOf(x)) ? `<p style="margin:10px 0 0;color:var(--yamabuki)">どのエリアにも入っていない院があります：${model.stores.filter(x => !areaOf(x)).map(x => esc(shortStore(x))).join('、')}</p>` : ''}
   </div>
@@ -1756,7 +1815,7 @@ function viewSet() {
 
 /* ---- 患者さんの詳細 ---- */
 function calendarsHTML(p) {
-  const a = p.asOf, tol = model.settings.tol;
+  const a = p.asOf, tol = pSet(p).tol;
   const marks = new Map(); const put = (d, c) => marks.set(d, ((marks.get(d) || '') + ' ' + c).trim());
   const showT = p.target !== null && !done(p);
   if (showT) for (let d = p.target - tol; d <= p.target + tol; d++) put(d, 'win' + (!p.booking && a > p.target + tol ? ' over' : ''));
@@ -1823,7 +1882,7 @@ function openPatient(id, keep) {
 
   let paceHTML = '';
   if (t && p.pace && !done(p)) {
-    const st = model.settings, cur = p.pace.manual || 0, lock = state.canWrite ? '' : ' disabled';
+    const st = pSet(p), cur = p.pace.manual || 0, lock = state.canWrite ? '' : ' disabled';
     const src = p.pace.auto && p.pace.auto.own ? 'これまで' : '更新前';
     const autoTxt = p.pace.auto ? (p.pace.auto.from !== null ? `${src}の間隔（約${p.pace.auto.from}日）から、${p.pace.auto.days}日ごと` : `${src}の記録が少ないため、${p.pace.auto.days}日ごと`)
       : `${st.b1}回目まで${st.d1}日ごと、${st.b2}回目まで${st.d2}日ごと、以降${st.d3}日ごと`;
@@ -1946,7 +2005,10 @@ function viewMembers() {
   const editable = m => m.email !== state.me.email && (isAdmin() || (m.role === 'staff' && (m.stores || []).every(s => mine.includes(s))));
   const areas = (state.areasAll || []).filter(a => isAdmin() || a.stores.some(x => mine.some(k => k.includes(keyOf(x)))));
   const checked = new Set(ed.stores || []);
-  const roleSel = isAdmin() ? `<label>役割 <select name="role">${['staff', 'am', 'admin'].map(r => `<option value="${r}"${(ed.role || 'staff') === r ? ' selected' : ''}>${ROLE[r]}</option>`).join('')}</select></label>` : '<input type="hidden" name="role" value="staff">';
+  const roleSel = isAdmin() ? `<label>役割 <select name="role">${['staff', 'am', 'admin'].map(r => `<option value="${r}"${(ed.role || 'staff') === r ? ' selected' : ''}>${r === 'am' ? 'エリマネ・FCオーナー' : ROLE[r]}</option>`).join('')}</select></label>` : '<input type="hidden" name="role" value="staff">';
+  const fcOf = k => { const a = areaOfShortName(k); return !!(a && a.fc); }, hasFc = isAdmin() && (state.areasAll || []).some(a => a.fc);
+  const chip = k => `<label class="ck"><input type="checkbox" name="st" value="${esc(k)}"${checked.has(k) ? ' checked' : ''}>${esc(k)}${isAdmin() && areaOfShort(k) ? `<small>${esc(areaOfShort(k))}</small>` : ''}</label>`;
+  const pick = a => `<button type="button" class="chip" data-act="pickArea" data-a="${esc(a.name)}">${esc(a.name)}をまとめて</button>`;
   const done = state.memDone, msg = done ? `${done.name}さん\n既存患者さんアプリのアカウントを作りました。\n\nURL：${backUrl()}\nメールアドレス：${done.email}\nパスワード：${done.pw}\n\nログインしたら、右上の「パスワード変更」で好きなパスワードに変えてください。` : '';
   return `${done ? `<div class="card donebox"><h2>${esc(done.name)}さんのログインの案内</h2><p>下の文をコピーして、LINEなどで本人に送ってください。パスワードはこの画面を閉じると表示されなくなります。</p><textarea id="doneMsg" rows="8" readonly>${esc(msg)}</textarea><p style="margin:8px 0 0;display:flex;gap:8px"><button class="btn" data-act="copyDone">コピーする</button><button class="btn ghost" data-act="closeDone">閉じる</button></p></div>` : ''}<p class="guide">このアプリを使う人を登録します。登録するときに最初のパスワードを決めて、本人に伝えてください。本人はそのパスワードですぐログインでき、あとから自分で変えられます。パスワードを忘れた人には「メール再送」で、パスワードを決め直すメールを送れます（届いたリンクは1時間ほどで使えなくなります）。${isAdmin() ? '' : 'エリマネは、担当の院のスタッフを登録できます。'}</p>
   <div class="grid2"><div class="card"><h2>${editing ? '登録を変える' : '新しく登録する'}</h2>
@@ -1956,14 +2018,16 @@ function viewMembers() {
       ${editing ? '' : `<label>最初のパスワード（8文字以上）<span class="pwrow"><input type="text" name="pw" value="${esc(ed.pw || '')}" minlength="8" autocomplete="off" required><button type="button" class="btn ghost sm" data-act="genPw">自動で作る</button></span><small class="hint">このパスワードを本人に伝えてください。ログインしたあと、本人が「パスワード変更」で変えられます。</small></label>`}
       ${roleSel}
       <fieldset><legend>見られる院</legend>
-        ${areas.length > 1 || isAdmin() ? `<p class="areapick">${areas.map(a => `<button type="button" class="chip" data-act="pickArea" data-a="${esc(a.name)}">${esc(a.name)}をまとめて</button>`).join('')}</p>` : ''}
-        <div class="storepick">${choices.map(k => `<label class="ck"><input type="checkbox" name="st" value="${esc(k)}"${checked.has(k) ? ' checked' : ''}>${esc(k)}${isAdmin() && areaOfShort(k) ? `<small>${esc(areaOfShort(k))}</small>` : ''}</label>`).join('') || '<span style="color:var(--sub)">選べる院がありません。</span>'}</div>
+        ${hasFc ? '<p class="pickhd">直営</p>' : ''}
+        ${areas.length > 1 || isAdmin() ? `<p class="areapick">${areas.filter(a => !hasFc || !a.fc).map(pick).join('')}</p>` : ''}
+        <div class="storepick">${choices.filter(k => !hasFc || !fcOf(k)).map(chip).join('') || '<span style="color:var(--sub)">選べる院がありません。</span>'}</div>
+        ${hasFc ? `<p class="pickhd">FC</p><p class="areapick">${areas.filter(a => a.fc).map(pick).join('')}</p><div class="storepick">${choices.filter(fcOf).map(chip).join('')}</div><p class="hint">FCのオーナーは、役割を「エリマネ・FCオーナー」にして、そのオーナーの院だけを選びます。直営とFCの院を一緒には選べません。</p>` : ''}
         ${isAdmin() ? '<p class="hint">管理者は、ここで選ばなくても全部の院を見られます。</p>' : ''}
       </fieldset>
       <p style="margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="btn memSubmit">${editing ? '変更を保存' : '登録する'}</button>${editing ? '<button type="button" class="btn ghost" data-act="memCancel">やめる</button>' : ''}</p>
     </form></div>
   <div class="card"><h2>登録されている人 <small style="color:var(--sub);font-weight:400">${list.length}人</small></h2>
-    <table class="memtbl"><tbody>${list.map(m => `<tr><td><b>${esc(m.name || '')}</b><br><small>${esc(m.email)}</small></td><td><span class="role r-${esc(m.role)}">${ROLE[m.role] || esc(m.role)}</span></td>
+    <table class="memtbl"><tbody>${list.map(m => `<tr><td><b>${esc(m.name || '')}</b><br><small>${esc(m.email)}</small></td><td><span class="role r-${esc(m.role)}${m.team && m.team !== DIRECT ? ' r-fc' : ''}">${esc(roleLabel(m))}</span>${m.team && m.team !== DIRECT && m.role !== 'am' ? `<br><small>${esc(m.team)}</small>` : ''}</td>
       <td class="st">${m.role === 'admin' ? '全部の院' : (m.stores || []).map(x => `<span class="nw">${esc(x)}</span>`).join('・') || '<span style="color:var(--sub)">なし</span>'}</td>
       <td class="r">${editable(m) ? `<button class="lk" data-act="memEdit" data-e="${esc(m.email)}">変える</button>　<button class="lk" data-act="memMail" data-e="${esc(m.email)}">メール再送</button>　<button class="lk danger" data-act="memDel" data-e="${esc(m.email)}">削除</button>` : (m.email === state.me.email ? '<small>あなた</small>' : '')}</td></tr>`).join('')}</tbody></table>
     <p class="hint">「削除」すると、その人はログインしてもデータを見られなくなります。</p>
@@ -1978,11 +2042,13 @@ document.addEventListener('submit', async e => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { flash('メールアドレスの形が正しくありません。'); return; }
   if (role !== 'admin' && !stores.length) { flash('見られる院を、1つ以上選んでください。'); return; }
   if (email === state.me.email) { flash('自分の登録は、ここでは変えられません。'); return; }
+  const team = isAdmin() ? teamOf(role, stores) : myTeam();
+  if (isAdmin() && role !== 'admin' && stores.length && team === DIRECT && stores.some(k => { const a = areaOfShortName(k); return a && a.fc; })) { flash('直営とFCの院、またはちがうFCの院を一緒には選べません。'); return; }
   const before = memberOf(email), isNew = !before, pw = f.pw ? f.pw.value.trim() : '';
   if (isNew && pw.length < 8) { flash('最初のパスワードは8文字以上にしてください。'); return; }
   const btn = f.querySelector('.memSubmit'); btn.disabled = true;
   try {
-    await FB.set('members/' + email, { name, role, stores: role === 'admin' ? [] : stores, addedBy: state.me.email, addedAt: (before && before.addedAt) || new Date().toISOString(), updatedAt: new Date().toISOString() });
+    await FB.set('members/' + email, { name, role, team, stores: role === 'admin' ? [] : stores, addedBy: state.me.email, addedAt: (before && before.addedAt) || new Date().toISOString(), updatedAt: new Date().toISOString() });
     if (isNew) {
       const created = await FB.createAccount(email, backUrl(), pw);
       if (created) { state.memDone = { name, email, pw }; flash(`${name}さんを登録しました。ログインの案内を本人に伝えてください。`); }
@@ -2064,6 +2130,7 @@ document.addEventListener('click', e => {
     state.areasAll = list;
     enqueue(() => FB.set('config/areas', { list }).then(() => flash('エリアを保存しました。'), () => flash('エリアを保存できませんでした。管理者のアカウントか確認してください。')));
   }
+  else if (d.act === 'resetSet' && fcAreaNow()) { const a = fcAreaNow(), cur = curSet(); state.fcSet = Object.assign({}, state.fcSet || {}, { [a]: { startDay: cur.startDay, renewRate: cur.renewRate } }); saveFcSet(a); rebuild(); render(); }
   else if (d.act === 'resetSet') { state.settings = Object.assign({}, DEFAULT_SETTINGS, { startDay: state.settings.startDay, renewRate: state.settings.renewRate, prices: state.settings.prices }); saveSettings(); rebuild(); render(); }
 });
 $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.close(); state.openId = null; } });
@@ -2091,14 +2158,21 @@ document.addEventListener('change', e => {
     planPatch(t.dataset.pid, key, t.checked ? { nm: true, a: base } : { nm: null, a: null, n: null }, t.checked ? `支払いを${+base.slice(5)}月にして、${+base.slice(5)}月の一覧に移しました。` : '来月払いをやめて、もとの月に戻しました。');
   }
   else if (t.dataset.price) { const v = Math.round(Number(t.value)); const pr = Object.assign({}, DEFAULT_PRICES, state.settings.prices || {}); if (t.value === '' ) delete pr[t.dataset.price]; else if (Number.isFinite(v) && v >= 0) pr[t.dataset.price] = v; state.settings.prices = pr; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); }
-  else if (t.id === 'startDay') { state.settings.startDay = t.value || ''; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); }
+  else if (t.id === 'startDay') { setValue('startDay', t.value || ''); renderChrome(); }
   else if (t.dataset.set) {
     const v = Math.round(Number(t.value));
-    if (Number.isFinite(v) && v >= Number(t.min) && v <= Number(t.max)) { state.settings[t.dataset.set] = v; t.value = v; saveSettings(); model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore); renderChrome(); } // 入力中の欄を作り直さないよう、ここでは再描画しない
-    else t.value = state.settings[t.dataset.set];
+    if (Number.isFinite(v) && v >= Number(t.min) && v <= Number(t.max)) { t.value = v; setValue(t.dataset.set, v); renderChrome(); } // 入力中の欄を作り直さないよう、ここでは再描画しない
+    else t.value = curSet()[t.dataset.set];
   }
 });
 document.addEventListener('input', e => { if (e.target.id === 'addq') addResults(e.target.value); });
+/* 設定を1つ変える。FCのエリアを見ているときは、そのエリアの設定として保存する */
+function setValue(k, v) {
+  const a = fcAreaNow();
+  if (a) { state.fcSet = Object.assign({}, state.fcSet || {}); state.fcSet[a] = Object.assign({}, state.fcSet[a] || {}, { [k]: v }); saveFcSet(a); }
+  else { state.settings[k] = v; saveSettings(); }
+  model = buildModel(data, state.settings, state.asOf, state.pace, state.asOfByStore);
+}
 document.addEventListener('dragover', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) { e.preventDefault(); z.classList.add('on'); } });
 document.addEventListener('dragleave', e => { const z = e.target.closest && e.target.closest('#drop'); if (z) z.classList.remove('on'); });
 document.addEventListener('drop', e => {
@@ -2116,7 +2190,7 @@ boot();
 /* Firebase（ログインとデータの保管庫）につなぐ部分 */
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, reload, setPersistence, browserLocalPersistence, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const config = {
   apiKey: 'AIzaSyBNRE_j2xdt_q-YIwL66HJvgbJOuPAo5ZQ',
@@ -2164,6 +2238,7 @@ window.fbReady(Object.freeze({
   del: p => deleteDoc(ref(p)),
   watch: (p, cb, err) => onSnapshot(ref(p), s => cb(s.exists() ? s.data() : null, s.metadata.hasPendingWrites), err),
   watchList: (p, cb, err) => onSnapshot(col(p), s => cb(s.docs.map(d => ({ id: d.id, data: d.data() }))), err),
+  watchWhere: (p, f, v, cb, err) => onSnapshot(query(col(p), where(f, '==', v)), s => cb(s.docs.map(d => ({ id: d.id, data: d.data() }))), err),
   list: async p => (await getDocs(col(p))).docs.map(d => ({ id: d.id, data: d.data() })),
 }));
 </script>

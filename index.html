@@ -286,7 +286,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 .endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px} .soonbox .oc{margin-left:auto;font-size:14px;font-weight:700;color:var(--ai);text-decoration:underline;text-underline-offset:3px;white-space:nowrap} .soonbox summary h2{flex-wrap:wrap}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
-table.ana th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap} table.ana td.r,table.ana th.r{text-align:right;white-space:nowrap} table.ana tr.tot td{font-weight:700} .anactl{display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:space-between;margin:0 0 12px} .anawrap{overflow-x:auto;margin:0 0 6px} table.ana td{padding:8px} table.ana tr:hover td{background:var(--ai-weak)} .rbar{display:inline-block;width:52px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden} .rbar i{display:block;height:100%;background:var(--ai)} .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 14px} .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px} .kpi small{display:block;color:var(--sub);font-size:12px;margin-bottom:2px} .kpi b{font-size:22px;font-weight:700;margin-right:4px} .kpi span{color:var(--sub);font-size:12px} .warnline{color:var(--shu)}
+table.ana th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap} table.ana td.r,table.ana th.r{text-align:right;white-space:nowrap} table.ana tr.tot td{font-weight:700} .anactl{display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:space-between;margin:0 0 12px} .anawrap{overflow-x:auto;margin:0 0 6px} table.ana td{padding:8px} table.ana tr:hover td{background:var(--ai-weak)} table.ana.heat{width:auto} table.ana.heat td,table.ana.heat th{min-width:40px;text-align:center} .rbar{display:inline-block;width:52px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden} .rbar i{display:block;height:100%;background:var(--ai)} .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 14px} .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px} .kpi small{display:block;color:var(--sub);font-size:12px;margin-bottom:2px} .kpi b{font-size:22px;font-weight:700;margin-right:4px} .kpi span{color:var(--sub);font-size:12px} .warnline{color:var(--shu)}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
 @media (max-width:700px){ .rbars .brow{grid-template-columns:78px 36px 1fr 1fr 1fr;gap:6px;font-size:11.5px;padding:4px 2px} .rbars .brow span:nth-child(2){display:none} .calls .crow{flex-wrap:wrap} }
 .nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
@@ -720,7 +720,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '11/14-2';
+const APP_VER = '11/14-3';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -2039,7 +2039,7 @@ function groupRows(ns, keyOf, order) {
   const ks = [...g.keys()].sort(order || ((a, b) => g.get(b).length - g.get(a).length));
   return ks.map(k => newRow(k, g.get(k)));
 }
-const ANA_SECS = [['new', '新規'], ['ticket', '回数券'], ['src', '集客'], ['who', 'お客さんの層']];
+const ANA_SECS = [['new', '新規'], ['ticket', '回数券'], ['src', '集客'], ['who', 'お客さんの層'], ['wd', '曜日']];
 function viewAna() {
   if (!isAdmin()) return '<p class="guide">この画面は管理者だけが見られます。</p>';
   if (!state.anaLoaded) loadAna();
@@ -2070,6 +2070,19 @@ function viewAna() {
     const trow = (l, xs) => { const sum = xs.reduce((a, b) => a + b.price, 0); return [esc(l), xs.filter(b => b.isNew).length, xs.filter(b => !b.isNew).length, xs.length, yen(sum), rateCell(sum, bs)]; };
     h += `<div class="card"><h2>回数券の販売</h2><p>初回から30日以内の購入を「新規」、それ以外を「更新など」にしています。分割払いは、入金のあった月に数えます。</p>
       ${anaTable(['回数券', '新規', '更新など', '合計件数', '金額', '金額の割合'], tk.map(t => trow(t, buys.filter(b => b.t === t))), trow('合計', buys))}</div>`;
+  } else if (sec === 'wd') {
+    const WD7 = [1, 2, 3, 4, 5, 6, 0], wdOf = d => dayToDate(d).getUTCDay();
+    const rs = B.all.filter(r => inPer(r.day) && (!state.staff || r.staff === state.staff)), vis = rs.filter(r => !r.deleted);
+    const row = w => { const x = rs.filter(r => wdOf(r.day) === w), v = x.filter(r => !r.deleted), days = new Set(v.map(r => r.day)).size, del = x.length - v.length, nw = NS.filter(n => wdOf(n.day) === w), b = nw.filter(n => n.bought).length;
+      return [WD[w] + '曜', v.length, days ? Math.round(v.length / days * 10) / 10 : '—', nw.length, rateCell(b, nw.length), rateCell(del, x.length)]; };
+    const tot = (() => { const days = new Set(vis.map(r => r.day)).size; return ['合計', vis.length, days ? Math.round(vis.length / days * 10) / 10 : '—', NS.length, rateCell(nb, NS.length), rateCell(rs.length - vis.length, rs.length)]; })();
+    const timed = vis.filter(r => r.hm), hours = [...new Set(timed.map(r => +r.hm.split(':')[0]))].sort((a, b) => a - b);
+    const cnt = (w, hr) => timed.filter(r => wdOf(r.day) === w && +r.hm.split(':')[0] === hr).length;
+    const mx = Math.max(1, ...WD7.flatMap(w => hours.map(hr => cnt(w, hr))));
+    const heat = hours.length ? `<div class="anawrap"><table class="ana heat"><tr><th></th>${WD7.map(w => `<th class="r">${WD[w]}</th>`).join('')}</tr>${hours.map(hr => `<tr><td>${hr}時</td>${WD7.map(w => { const c = cnt(w, hr), a = c / mx; return `<td class="r" style="background:color-mix(in srgb, var(--ai) ${Math.round(a * 75)}%, transparent)${a > 0.5 ? ';color:var(--surface)' : ''}">${c || ''}</td>`; }).join('')}</tr>`).join('')}</table></div>` : '<p class="warnline">時刻つきの予約データがまだありません。CSVを入れ直した分から出ます。</p>';
+    h += `<div class="card"><h2>曜日ごと</h2><p>来院数は来院した予約の数、1日あたりはその曜日の営業日1日あたりの来院数です。新規と購入率は、初めて来院した曜日で数えています。キャンセル率は、削除された予約の割合です（日時の変更で取り直した分も含みます）。</p>
+      ${anaTable(['曜日', '来院数', '1日あたり', '新規数', '購入率', 'キャンセル率'], WD7.map(row), tot)}
+      <h3>曜日と時間帯の混み具合（来院数）</h3><p>色が濃いほど来院が多い時間です。</p>${heat}</div>`;
   } else {
     const withA = NS.filter(n => n.attr), hasAttr = Object.keys(state.ana || {}).length > 0;
     const note = !hasAttr ? '<p class="warnline">流入元・年代・性別がまだ入っていません。CSVを入れるタブで顧客データを入れると出ます。</p>' : withA.length < NS.length ? `<p>顧客データが入っている新規 ${withA.length}人 / ${NS.length}人 で数えています。</p>` : '';

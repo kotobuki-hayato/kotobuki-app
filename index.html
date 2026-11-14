@@ -286,6 +286,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 .endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px} .soonbox .oc{margin-left:auto;font-size:14px;font-weight:700;color:var(--ai);text-decoration:underline;text-underline-offset:3px;white-space:nowrap} .soonbox summary h2{flex-wrap:wrap}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
+table.ana th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap} table.ana td.r,table.ana th.r{text-align:right;white-space:nowrap} table.ana tr.tot td{font-weight:700} table.ana.heat td{min-width:34px} .periods{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px} .warnline{color:var(--shu)}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
 @media (max-width:700px){ .rbars .brow{grid-template-columns:78px 36px 1fr 1fr 1fr;gap:6px;font-size:11.5px;padding:4px 2px} .rbars .brow span:nth-child(2){display:none} .calls .crow{flex-wrap:wrap} }
 .nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
@@ -354,6 +355,7 @@ details.mig{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;fo
     <button role="tab" data-tab="renew">更新見込み</button>
     <button role="tab" data-tab="csv" id="tabCsv">CSVを入れる</button>
     <button role="tab" data-tab="mem" id="tabMem" hidden>メンバー</button>
+    <button role="tab" data-tab="ana" id="tabAna" hidden>分析</button>
     <button role="tab" data-tab="set">設定</button>
   </nav>
   <main id="view"></main>
@@ -425,7 +427,7 @@ function ingest(data, type, table, fallback) {
       if (!id || day === null) continue;
       const nx = g(row, '次回予約までの日数');
       data.res.set(id, {
-        id, day, cust: g(row, '顧客ID'),
+        id, day, cust: g(row, '顧客ID'), hm: (g(row, '来店日時').match(/\d{1,2}:\d{2}/) || [''])[0],
         store: g(row, '店舗名') || (fallback && fallback.store) || '',
         staff: g(row, '担当スタッフ名').replace(/\s+/g, ' ') || '担当なし',
         isNew: g(row, '新規顧客') === '1', deleted: g(row, '削除済み') === '1',
@@ -440,7 +442,9 @@ function ingest(data, type, table, fallback) {
       data.items.set(id, { id, acct: g(row, '会計ID'), kind: g(row, '区分'), name: g(row, '品目名'), price: pr });
     } else if (type === '顧客') {
       const id = g(row, '顧客ID'); if (!id) continue;
-      data.cust.set(id, { id, name: g(row, '氏名'), kana: g(row, '氏名カナ') }); // 氏名以外の個人情報は保持しない
+      const c = { id, name: g(row, '氏名'), kana: g(row, '氏名カナ') }; // 院のデータに保存するのは氏名だけ
+      if (idx['性別'] !== undefined && typeof custAttr === 'function') c.attr = custAttr(cc => g(row, cc)); // 分析用の属性（管理者だけが読める場所に別で保存）
+      data.cust.set(id, c);
     } else continue;
     n++;
   }
@@ -683,7 +687,7 @@ function tablesOf(data) {
   const used = new Set(); for (const r of data.res.values()) used.add(r.cust); // 名前は、予約データに出てくる患者さんの分だけ保存する
   return {
     '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
-      rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
+      rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: [...data.pay.values()].map(p => [p.id, p.res]) },
     '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...data.items.values()].map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...data.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
@@ -716,7 +720,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '11/3-1';
+const APP_VER = '11/14-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -868,7 +872,7 @@ function storeTablesOf(src, full) {
   const pay = [...src.pay.values()].filter(p => rid.has(p.res)), aid = new Set(pay.map(p => p.id));
   return {
     '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
-      rows: res.map(r => [r.id, r.store, dayISO(r.day), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
+      rows: res.map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: pay.map(p => [p.id, p.res]) },
     '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...src.items.values()].filter(i => aid.has(i.acct)).map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...src.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
@@ -1096,6 +1100,7 @@ function renderMe() {
   b.hidden = !m;
   if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${roleLabel(m)}</small></span><button class="btn ghost sm" data-act="chpw">パスワード変更</button><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
   const t = $('#tabMem'); if (t) t.hidden = !canUpload();
+  const ta = $('#tabAna'); if (ta) ta.hidden = !isAdmin();
 }
 async function boot() {
   gate('loading');
@@ -1957,10 +1962,137 @@ async function loadFiles(files) {
         const a = asOfNew[full] !== undefined ? Math.max(asOfNew[full], (storeData[sid(full)] && storeData[sid(full)].asOf) || 0) : ((storeData[sid(full)] && storeData[sid(full)].asOf) || todayDay());
         await saveStore(full, src, a);
       }
+      saveAnaAttrs(targets, src);
       mergeAll(); rebuild();
       flash(`保存しました（${targets.map(shortStore).join('、')}）。ほかの人の画面にも反映されます。`);
     } catch (e) { flash(denied(e) ? '保存する権限がありませんでした。担当の院か確認してください。' : '保存できませんでした。もう一度読み込んでください。'); }
   });
+}
+
+/* ===== 分析（管理者だけ） ===== */
+/* 顧客データの「性別・年代・流入元・初回コース」は、管理者だけが読める ana/{院} に置く（電話番号・住所・生年月日そのものは置かない） */
+const GENDER = { 1: '男性', 2: '女性' };
+const CAMP = { katakori: '肩こり', jiritu: '自律神経', zutuu: '頭痛', simei: '指名', newspaper: '新聞', fbpg: 'FBページ', yotu: '腰痛' };
+function custAttr(g) {
+  const birth = toDay(g('生年月日')), reg = toDay(g('顧客登録日時')) || todayDay();
+  const age = birth === null ? '' : String(Math.floor(Math.floor((reg - birth) / 365.25) / 10) * 10);
+  const src = g('流入元ソース').toLowerCase(), first = g('初回コース名');
+  const ch = /^(ig|instagram)/.test(src) ? 'Instagram' : /^(fb|facebook|meta)/.test(src) ? 'Facebook' : /google/.test(src) ? 'Google広告'
+    : /openai|chatgpt/.test(src) ? 'ChatGPT' : /公式HP/.test(first) ? '公式HP' : /HPB|ホットペッパー/i.test(first) ? 'ホットペッパー'
+    : /Google\s*MAP/i.test(first) ? 'Googleマップ' : /紹介/.test(first) ? '紹介' : '不明';
+  const cp = g('流入元キャンペーン').toLowerCase().replace(/\d+$/, '');
+  return [g('性別'), age, ch, cp ? (CAMP[cp] || cp) : '', first.replace(/\|/g, '/').slice(0, 40)].join('|');
+}
+const anaAttr = cid => { for (const s of Object.keys(state.ana || {})) { const v = state.ana[s][cid]; if (v) return v.split('|'); } return null; };
+async function loadAna() {
+  if (state.anaLoading || !isAdmin()) return;
+  state.anaLoading = true; const out = {};
+  await Promise.all(Object.keys(storeData).map(s => FB.get('ana/' + s).then(x => { if (x && x.c) out[s] = x.c; }, () => {})));
+  state.ana = out; state.anaLoaded = true; state.anaLoading = false;
+  if (state.tab === 'ana') render();
+}
+/* CSVを入れたときに、顧客データの属性を ana/{院} に足していく（エリマネも書けるが、読めるのは管理者だけ） */
+function saveAnaAttrs(targets, src) {
+  const per = {};
+  for (const r of src.res.values()) {
+    if (!targets.includes(r.store)) continue;
+    const c = src.cust.get(r.cust); if (!c || !c.attr) continue;
+    (per[sid(r.store)] = per[sid(r.store)] || {})[r.cust] = c.attr;
+  }
+  for (const s of Object.keys(per)) enqueue(() => FB.set('ana/' + s, { c: per[s], at: new Date().toISOString() }, true).then(() => { if (state.ana) state.ana[s] = Object.assign({}, state.ana[s] || {}, per[s]); }, () => {}));
+}
+const isBuyItem = i => i.kind === '2' && RE_BUY.test(i.name) && !RE_USE.test(i.name);
+const ticketOf = n => { const m = n.match(RE_BUY); return m ? (m[1] || '').toUpperCase() + m[2] : '他'; };
+const pct = (a, b) => (b ? Math.round(a / b * 1000) / 10 + '%' : '—');
+const anaYm = d => dayISO(d).slice(0, 7);
+const anaYmLabel = k => (+k.slice(5)) + '月' + (k.slice(0, 4) !== String(new Date().getFullYear()) ? `（${k.slice(0, 4)}）` : '');
+/* 患者さんごとの来院と支払いをまとめる（範囲は上で選んだエリア・院） */
+function anaBase() {
+  const T = todayDay(), inScope = st => inArea(st, state.area) && (!state.store || st === state.store);
+  const acct = new Map(); for (const p of data.pay.values()) { const r = data.res.get(p.res); if (r) acct.set(p.id, r); }
+  const by = new Map(), all = [];
+  for (const r of data.res.values()) { if (!inScope(r.store)) continue; all.push(r); if (r.deleted || r.day > T) continue; if (!by.has(r.cust)) by.set(r.cust, { v: [], pay: [] }); by.get(r.cust).v.push(r); }
+  for (const i of data.items.values()) { const r = acct.get(i.acct); if (!r || !by.has(r.cust) || r.deleted) continue; by.get(r.cust).pay.push({ day: r.day, price: i.price || 0, buy: isBuyItem(i), t: ticketOf(i.name), staff: r.staff, store: r.store }); }
+  const news = [];
+  for (const [cid, x] of by) {
+    x.v.sort((a, b) => a.day - b.day || (a.id < b.id ? -1 : 1));
+    const f = x.v[0]; if (!f.isNew) continue;
+    const in30 = x.pay.filter(p => p.day >= f.day && p.day <= f.day + 30);
+    news.push({ cid, day: f.day, store: f.store, staff: f.staff, n: x.v.length, last: x.v[x.v.length - 1].day, v: x.v,
+      bought: in30.some(p => p.buy), sales: in30.reduce((a, p) => a + p.price, 0), ltv: x.pay.reduce((a, p) => a + p.price, 0), attr: anaAttr(cid) });
+  }
+  return { T, by, news, all };
+}
+function anaTable(head, rows, foot) {
+  const td = (v, i) => `<td${i ? ' class="r"' : ''}>${v}</td>`;
+  return `<div style="overflow-x:auto"><table class="ana"><tr>${head.map((h, i) => `<th${i ? ' class="r"' : ''}>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(td).join('')}</tr>`).join('')}${foot ? `<tr class="tot">${foot.map(td).join('')}</tr>` : ''}</table></div>`;
+}
+/* 新規の指標（新規数・購入率・新規売上・新規LTV・2回目来院率） */
+function newRow(label, ns) {
+  const b = ns.filter(n => n.bought).length, s = ns.reduce((a, n) => a + n.sales, 0), two = ns.filter(n => n.n >= 2).length;
+  return [esc(label), ns.length, b, pct(b, ns.length), yen(s), ns.length ? yen(s / ns.length) : '—', pct(two, ns.length)];
+}
+const NEW_HEAD = ['', '新規数', '回数券購入', '購入率', '新規売上', '新規LTV', '2回目来院'];
+function groupRows(ns, keyOf, order) {
+  const g = new Map(); for (const n of ns) { const k = keyOf(n); if (!g.has(k)) g.set(k, []); g.get(k).push(n); }
+  const ks = [...g.keys()].sort(order || ((a, b) => g.get(b).length - g.get(a).length));
+  return ks.map(k => newRow(k, g.get(k)));
+}
+function viewAna() {
+  if (!isAdmin()) return '<p class="guide">この画面は管理者だけが見られます。</p>';
+  if (!state.anaLoaded) { loadAna(); }
+  const B = anaBase(), per = state.anaPer || '3', T = B.T;
+  const td = dayToDate(T), fromDay = per === 'all' ? -Infinity : Math.round(Date.UTC(td.getUTCFullYear(), td.getUTCMonth() - (Number(per) - 1), 1) / DAY_MS);
+  const inPer = d => d >= fromDay && d <= T;
+  const NS = B.news.filter(n => inPer(n.day) && (!state.staff || n.staff === state.staff));
+  const scope = state.store ? shortStore(state.store) : state.area || (fcSplit() ? '全エリア（直営）' : '全エリア');
+  const perBtns = [['1', '今月'], ['3', '3か月'], ['6', '6か月'], ['all', '全期間']].map(([k, l]) => `<button class="chip" data-anaper="${k}" aria-pressed="${per === k}">${l}</button>`).join('');
+  const hasAttr = Object.keys(state.ana || {}).length > 0;
+  let h = `<p class="guide">管理者だけに見える画面です。範囲は上で選んだエリア・院（${esc(scope)}${state.staff ? '・' + esc(state.staff) : ''}）、期間は ${per === 'all' ? '入っているデータ全部' : md(fromDay) + '〜' + md(T)} です。新規の患者さんは、初めて来院した日で数えます。</p>
+  <p class="periods">${perBtns}</p>`;
+  /* 1. 新規と回数券 */
+  const months = [...new Set(NS.map(n => anaYm(n.day)))].sort().reverse();
+  h += `<div class="card"><h2>新規と回数券の購入</h2><p>回数券購入は、初回から30日以内に回数券を買った人です。新規売上は初回から30日以内の入金の合計、新規LTVは新規売上 ÷ 新規数です。</p>
+    <h3>月ごと</h3>${anaTable(['来院月'].concat(NEW_HEAD.slice(1)), months.map(k => newRow(anaYmLabel(k), NS.filter(n => anaYm(n.day) === k))), newRow('合計', NS))}
+    <h3>スタッフ別</h3>${anaTable(['担当'].concat(NEW_HEAD.slice(1)), groupRows(NS, n => n.staff))}
+    ${state.store ? '' : `<h3>院別</h3>${anaTable(['院'].concat(NEW_HEAD.slice(1)), groupRows(NS, n => shortStore(n.store)))}`}</div>`;
+  /* 2. 回数券の販売 */
+  const buys = []; for (const [cid, x] of B.by) { const f = x.v[0]; for (const p of x.pay) if (p.buy && inPer(p.day) && (!state.staff || p.staff === state.staff)) buys.push(Object.assign({ isNew: f.isNew && p.day <= f.day + 30 }, p)); }
+  const tk = [...new Set(buys.map(b => b.t))].sort((a, b) => (a[0] === b[0] ? Number(a.slice(1)) - Number(b.slice(1)) : a < b ? 1 : -1));
+  const trow = (l, bs) => { const nw = bs.filter(b => b.isNew), rn = bs.filter(b => !b.isNew); return [esc(l), nw.length, yen(nw.reduce((a, b) => a + b.price, 0)), rn.length, yen(rn.reduce((a, b) => a + b.price, 0)), bs.length, yen(bs.reduce((a, b) => a + b.price, 0))]; };
+  h += `<div class="card"><h2>回数券の販売</h2><p>回数券の購入の行を数えています（分割払いは、その月に入った分）。初回から30日以内の購入を「新規」、それ以外を「更新など」にしています。</p>
+    ${anaTable(['回数券', '新規 件数', '新規 金額', '更新など 件数', '更新など 金額', '合計 件数', '合計 金額'], tk.map(t => trow(t, buys.filter(b => b.t === t))), trow('合計', buys))}</div>`;
+  /* 3. 流入元・年代・性別 */
+  const withA = NS.filter(n => n.attr);
+  h += `<div class="card"><h2>集客（流入元）と、お客さんの層</h2>${!hasAttr ? '<p class="warnline">顧客データの流入元・年代・性別がまだ入っていません。CSVを入れるタブで顧客データを入れると、ここに出ます（初回だけ、期間を長めにして顧客データを入れてください）。</p>' : `<p>顧客データの「流入元ソース」と「初回コース名」から分けています。顧客データが入っている新規 ${withA.length}人 / ${NS.length}人 で数えています。</p>
+    <h3>流入元</h3>${anaTable(['流入元'].concat(NEW_HEAD.slice(1)), groupRows(withA, n => n.attr[2] || '不明'))}
+    <h3>広告の訴求（流入元キャンペーン）</h3>${anaTable(['訴求'].concat(NEW_HEAD.slice(1)), groupRows(withA.filter(n => n.attr[3]), n => n.attr[3]))}
+    <h3>初回コース</h3>${anaTable(['初回コース'].concat(NEW_HEAD.slice(1)), groupRows(withA, n => n.attr[4] || '（空欄）'))}
+    <h3>年代</h3>${anaTable(['年代'].concat(NEW_HEAD.slice(1)), groupRows(withA, n => (n.attr[1] ? n.attr[1] + '代' : '未登録'), (a, b) => (a === '未登録') - (b === '未登録') || parseInt(a) - parseInt(b)))}
+    <h3>性別</h3>${anaTable(['性別'].concat(NEW_HEAD.slice(1)), groupRows(withA, n => GENDER[n.attr[0]] || '未登録'))}`}</div>`;
+  /* 4. 継続と離反 */
+  const coh = [...new Set(B.news.filter(n => !state.staff || n.staff === state.staff).map(n => anaYm(n.day)))].sort().reverse();
+  const crow = k => { const ns = B.news.filter(n => anaYm(n.day) === k && (!state.staff || n.staff === state.staff)); const at = d => { const el = ns.filter(n => n.day + d <= T); return el.length ? pct(el.filter(n => n.last >= n.day + d).length, el.length) : '—'; };
+    return [anaYmLabel(k), ns.length, pct(ns.filter(n => n.bought).length, ns.length), at(30), at(60), at(90), at(180), ns.length ? yen(ns.reduce((a, n) => a + n.ltv, 0) / ns.length) : '—']; };
+  const gone = NS.filter(n => T - n.last >= 60), bins = [[1, 1], [2, 2], [3, 5], [6, 10], [11, 999]];
+  h += `<div class="card"><h2>継続と離反</h2><p>初めて来院した月ごとに、その日から30日・60日・90日・180日たったあとにも来院がある人の割合です（まだその日数がたっていない人は除きます）。累計の入金は、データが入っている期間の合計です。</p>
+    ${anaTable(['初回の月', '新規数', '購入率', '30日後', '60日後', '90日後', '180日後', '1人あたり累計入金'], coh.map(crow))}
+    <h3>来なくなった人が、何回目で止まったか</h3><p>期間内の新規のうち、最後の来院から60日以上たっている人 ${gone.length}人の、来院回数です。</p>
+    ${anaTable(['来院回数', '人数', '割合'], bins.map(([a, b]) => { const c = gone.filter(n => n.n >= a && n.n <= b).length; return [a === b ? a + '回' : b > 100 ? a + '回以上' : a + '〜' + b + '回', c, pct(c, gone.length)]; }))}</div>`;
+  /* 5. 予約の動き */
+  const rs = B.all.filter(r => inPer(r.day) && (!state.staff || r.staff === state.staff)), WD7 = [1, 2, 3, 4, 5, 6, 0];
+  const delRow = (l, xs) => { const d = xs.filter(r => r.deleted).length, v = xs.filter(r => !r.deleted); const nx = v.filter(r => r.next !== null && r.next !== undefined); return [esc(l), xs.length, d, pct(d, xs.length), pct(nx.filter(r => r.next > 0).length, v.length)]; };
+  const grp = (f) => { const g = new Map(); for (const r of rs) { const k = f(r); if (!g.has(k)) g.set(k, []); g.get(k).push(r); } return g; };
+  const bySt = grp(r => r.staff), byWd = grp(r => dayToDate(r.day).getUTCDay());
+  const timed = rs.filter(r => !r.deleted && r.hm), hours = [...new Set(timed.map(r => +r.hm.split(':')[0]))].sort((a, b) => a - b);
+  const cnt = (wd, hr) => timed.filter(r => dayToDate(r.day).getUTCDay() === wd && +r.hm.split(':')[0] === hr).length;
+  const mx = Math.max(1, ...WD7.flatMap(w => hours.map(hr => cnt(w, hr))));
+  const heat = hours.length ? `<div style="overflow-x:auto"><table class="ana heat"><tr><th></th>${WD7.map(w => `<th class="r">${WD[w]}</th>`).join('')}</tr>${hours.map(hr => `<tr><td>${hr}時</td>${WD7.map(w => { const c = cnt(w, hr); return `<td class="r" style="background:color-mix(in srgb, var(--ai) ${Math.round(c / mx * 70)}%, transparent)${c / mx > 0.45 ? ';color:var(--surface)' : ''}">${c || ''}</td>`; }).join('')}</tr>`).join('')}</table></div>` : '<p class="warnline">時刻つきの予約データがまだありません。次にCSVを入れた分から出ます。</p>';
+  h += `<div class="card"><h2>予約の動き</h2><p>キャンセル率は、予約のうち削除された予約の割合です（日時の変更で取り直した分も含みます）。次回予約ありは、来院した予約のうち「次回予約までの日数」が入っている割合です。</p>
+    ${anaTable(['担当', '予約', '削除', 'キャンセル率', '次回予約あり'], [...bySt.keys()].sort((a, b) => bySt.get(b).length - bySt.get(a).length).map(k => delRow(k, bySt.get(k))), delRow('合計', rs))}
+    <h3>曜日別</h3>${anaTable(['曜日', '予約', '削除', 'キャンセル率', '次回予約あり'], WD7.filter(w => byWd.has(w)).map(w => delRow(WD[w] + '曜', byWd.get(w))))}
+    <h3>曜日と時間帯の混み具合（来院した予約の数）</h3>${heat}</div>`;
+  return h;
 }
 
 /* ---- Claude版からの引っ越し（管理者・最初の1回） ---- */
@@ -2088,13 +2220,14 @@ function keepMemDraft() {
 function render() {
   const v = $('#view');
   if (state.tab === 'mem') { const ae = document.activeElement, keep = ae && ae.closest && ae.closest('#fMem') ? { n: ae.name, s: ae.selectionStart } : null; keepMemDraft(); state.memFocus = keep; } plists = [];
-  v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : viewSet();
+  v.innerHTML = state.tab === 'follow' ? viewFollow() : state.tab === 'cal' ? viewCal() : state.tab === 'renew' ? viewRenew() : state.tab === 'csv' ? viewCsv() : state.tab === 'mem' ? viewMembers() : state.tab === 'ana' ? viewAna() : viewSet();
   if (state.tab === 'mem' && state.memFocus && state.memFocus.n) { const el = $('#fMem [name=' + state.memFocus.n + ']'); if (el) { el.focus(); if (state.memFocus.s !== null && state.memFocus.s !== undefined) { try { el.setSelectionRange(state.memFocus.s, state.memFocus.s); } catch (e) { /* 選べない欄もある */ } } else if (el.type === 'email') { const v = el.value; el.value = ''; el.value = v; } /* メール欄は、カーソルを最後に置き直す */ } state.memFocus = null; }
 }
 document.addEventListener('click', e => {
-  const el = e.target.closest('[data-pdel],[data-pexcl],[data-pincl],[data-addp],[data-hide],[data-unhide],[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
+  const el = e.target.closest('[data-anaper],[data-pdel],[data-pexcl],[data-pincl],[data-addp],[data-hide],[data-unhide],[data-plist],[data-call],[data-ctmonth],[data-tab],[data-area],[data-store],[data-staff],[data-min],[data-onlynew],[data-tick],[data-ct],[data-ctdel],[data-calmode],[data-month],[data-pace],[data-id],[data-act]'); if (!el) return;
   const d = el.dataset;
-  if (d.pdel) { const before = Object.assign({}, state.plans[d.pdel] || {}); planPatch(d.pid, d.pdel, { a: null, n: null, nm: null, ad: null }, 'この月の一覧から消しました。', () => { const p = model.patients.find(q => q.id === d.pid); if (p) savePlan(p, d.pdel, before, false, '元に戻しました。'); }); }
+  if (d.anaper) { state.anaPer = d.anaper; render(); }
+  else if (d.pdel) { const before = Object.assign({}, state.plans[d.pdel] || {}); planPatch(d.pid, d.pdel, { a: null, n: null, nm: null, ad: null }, 'この月の一覧から消しました。', () => { const p = model.patients.find(q => q.id === d.pid); if (p) savePlan(p, d.pdel, before, false, '元に戻しました。'); }); }
   else if (d.pexcl) { const before = Object.assign({}, state.plans[d.pexcl] || {}), to = nextYm(d.pym); planPatch(d.pid, d.pexcl, { a: to, n: true, x: null }, `${+to.slice(5)}月の一覧に回しました。`, () => { const p = model.patients.find(q => q.id === d.pid); if (p) savePlan(p, d.pexcl, Object.assign({ a: false, n: false, x: false }, before), false, '元に戻しました。'); }); }
   else if (d.pincl) planPatch(d.pid, d.pincl, { x: null }, 'この月の一覧に戻しました。');
   else if (d.addp) { const p = model.patients.find(q => q.id === d.addp); if (p) planPatch(p.id, planKey(p, p.tk), { a: state.month, n: false, nm: false, ad: true, x: null }, `${pname(p)}さんを追加しました。`); }

@@ -286,7 +286,7 @@ tr.fut td{color:var(--sub)} tr.cx td{color:var(--shu)}
 .endlist{margin-top:18px} .endlist summary{cursor:pointer;list-style:none} .endlist summary::-webkit-details-marker{display:none} .endlist summary h3{font-size:14px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px} .endlist summary h3::before{content:"▸";color:var(--sub);transition:transform .15s} .endlist[open] summary h3::before{transform:rotate(90deg)} .endlist summary small{color:var(--sub);font-weight:400} .endlist .oc{margin-left:auto;font-size:13px;color:var(--ai);text-decoration:underline;text-underline-offset:3px}
 .soonbox summary{cursor:pointer;list-style:none} .soonbox summary::-webkit-details-marker{display:none} .soonbox summary h2{display:flex;align-items:center;gap:8px} .soonbox summary h2::before{content:"▸";color:var(--sub);font-size:14px;transition:transform .15s} .soonbox[open] summary h2::before{transform:rotate(90deg)} .soonbox summary small{color:var(--sub);font-weight:400;font-size:13px} .soonbox .oc{margin-left:auto;font-size:14px;font-weight:700;color:var(--ai);text-decoration:underline;text-underline-offset:3px;white-space:nowrap} .soonbox summary h2{flex-wrap:wrap}
 .calls .crow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)} .calls .crow > button[data-id]{flex:1;border-top:0;min-width:0} .calls .crow .tick{flex:none}
-table.ana th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap} table.ana td.r,table.ana th.r{text-align:right;white-space:nowrap} table.ana tr.tot td{font-weight:700} .anactl{display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:space-between;margin:0 0 12px} .anawrap{overflow-x:auto;margin:0 0 6px} table.ana td{padding:8px} table.ana tr:hover td{background:var(--ai-weak)} table.ana.heat{width:auto} table.ana.rb td{vertical-align:top} .rbk{display:inline-flex;align-items:baseline;gap:5px;margin:0 14px 4px 0;white-space:nowrap} .rbk small{color:var(--sub);font-size:11px} table.ana.heat td,table.ana.heat th{min-width:40px;text-align:center} .rbar{display:inline-block;width:52px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden} .rbar i{display:block;height:100%;background:var(--ai)} .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 14px} .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px} .kpi small{display:block;color:var(--sub);font-size:12px;margin-bottom:2px} .kpi b{font-size:22px;font-weight:700;margin-right:4px} .kpi span{color:var(--sub);font-size:12px} .warnline{color:var(--shu)}
+table.ana th{font-size:12px;color:var(--sub);font-weight:600;white-space:nowrap} table.ana td.r,table.ana th.r{text-align:right;white-space:nowrap} table.ana tr.tot td{font-weight:700} .anactl{display:flex;gap:10px 18px;flex-wrap:wrap;justify-content:space-between;margin:0 0 12px} .anawrap{overflow-x:auto;margin:0 0 6px} table.ana td{padding:8px} table.ana tr:hover td{background:var(--ai-weak)} table.ana.heat{width:auto} table.ana.heat td,table.ana.heat th{min-width:40px;text-align:center} .rbar{display:inline-block;width:52px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden} .rbar i{display:block;height:100%;background:var(--ai)} .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 14px} .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px} .kpi small{display:block;color:var(--sub);font-size:12px;margin-bottom:2px} .kpi b{font-size:22px;font-weight:700;margin-right:4px} .kpi span{color:var(--sub);font-size:12px} .warnline{color:var(--shu)}
 table.prices{width:auto} table.prices td{padding:4px 10px 4px 0} table.prices input{width:7.5em}
 @media (max-width:700px){ .rbars .brow{grid-template-columns:78px 36px 1fr 1fr 1fr;gap:6px;font-size:11.5px;padding:4px 2px} .rbars .brow span:nth-child(2){display:none} .calls .crow{flex-wrap:wrap} }
 .nbtn{border:0;cursor:pointer;font:inherit;font-weight:700} .nbtn:hover{filter:brightness(.92);text-decoration:underline} .n.plain{background:none;color:inherit;padding:0 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
@@ -427,7 +427,7 @@ function ingest(data, type, table, fallback) {
       if (!id || day === null) continue;
       const nx = g(row, '次回予約までの日数');
       data.res.set(id, {
-        id, day, cust: g(row, '顧客ID'), hm: (g(row, '来店日時').match(/\d{1,2}:\d{2}/) || [''])[0], course: g(row, 'コースID'),
+        id, day, cust: g(row, '顧客ID'), hm: (g(row, '来店日時').match(/\d{1,2}:\d{2}/) || [''])[0],
         store: g(row, '店舗名') || (fallback && fallback.store) || '',
         staff: g(row, '担当スタッフ名').replace(/\s+/g, ' ') || '担当なし',
         isNew: g(row, '新規顧客') === '1', deleted: g(row, '削除済み') === '1',
@@ -686,8 +686,8 @@ function buildModel(data, settings, asOf, pace, asOfByStore) {
 function tablesOf(data) {
   const used = new Set(); for (const r of data.res.values()) used.add(r.cust); // 名前は、予約データに出てくる患者さんの分だけ保存する
   return {
-    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数', 'コースID'],
-      rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next), r.course || '']) },
+    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
+      rows: [...data.res.values()].map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: [...data.pay.values()].map(p => [p.id, p.res]) },
     '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...data.items.values()].map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...data.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
@@ -720,7 +720,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '11/16-1';
+const APP_VER = '11/14-3';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -871,8 +871,8 @@ function storeTablesOf(src, full) {
   const res = [...src.res.values()].filter(r => r.store === full), rid = new Set(res.map(r => r.id)), used = new Set(res.map(r => r.cust));
   const pay = [...src.pay.values()].filter(p => rid.has(p.res)), aid = new Set(pay.map(p => p.id));
   return {
-    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数', 'コースID'],
-      rows: res.map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next), r.course || '']) },
+    '予約': { cols: ['予約ID', '店舗名', '来店日時', '担当スタッフ名', '顧客ID', '新規顧客', '削除済み', '次回予約までの日数'],
+      rows: res.map(r => [r.id, r.store, dayISO(r.day) + (r.hm ? ' ' + r.hm : ''), r.staff, r.cust, r.isNew ? '1' : '0', r.deleted ? '1' : '0', r.next === null ? '' : String(r.next)]) },
     '精算': { cols: ['会計ID', '予約ID'], rows: pay.map(p => [p.id, p.res]) },
     '精算アイテム': { cols: ['明細ID', '会計ID', '区分', '品目名', '価格'], rows: [...src.items.values()].filter(i => aid.has(i.acct)).map(i => [i.id, i.acct, i.kind, i.name, i.price === null || i.price === undefined ? '' : String(i.price)]) },
     '顧客': { cols: ['顧客ID', '氏名'], rows: [...src.cust.values()].filter(c => c.name && used.has(c.id)).map(c => [c.id, c.name]) },
@@ -1621,36 +1621,6 @@ const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
 const PLAN_REASONS = ['良くなった', '引越し・転勤', '長期出張', '距離・動線', '金銭面', '担当変更', '都度', 'その他'];
 const priceOf = t => { const pr = Object.assign({}, DEFAULT_PRICES, model.settings.prices || {}); const v = Number(pr[t]); return v > 0 ? v : null; };
 const callOf = p => { const d = state.renewCall[p.id]; return d && (!p.tk || p.tk.start === null || toDay(d) >= p.tk.start) ? d : null; }; // いまの回数券のあいだに声かけした日
-/* 予約表で紫になる「回数券更新」のコース：院ごとに、過去の会計で「回数券更新」が入った予約が多いコース番号を見つける */
-let rcCache = { n: -1, set: null };
-function renewCourses() {
-  if (rcCache.n === data.res.size + data.items.size) return rcCache.set;
-  const ren = new Set(); for (const i of data.items.values()) if (/回数券更新/.test(i.name)) ren.add(i.acct);
-  const paid = new Map(), hit = new Map();
-  for (const p of data.pay.values()) { const r = data.res.get(p.res); if (!r || !r.course || r.deleted) continue; const k = r.store + '#' + r.course; paid.set(k, (paid.get(k) || 0) + 1); if (ren.has(p.id)) hit.set(k, (hit.get(k) || 0) + 1); }
-  const set = new Set(); for (const [k, n] of hit) if (n / paid.get(k) >= 0.6) set.add(k);
-  rcCache = { n: data.res.size + data.items.size, set }; return set;
-}
-function renewBookings() {
-  const rc = renewCourses(), T = todayDay(), d = dayToDate(T), end = Math.round(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0) / DAY_MS);
-  const hasCourse = [...data.res.values()].some(r => r.course);
-  const by = new Map();
-  for (const r of data.res.values()) {
-    if (r.deleted || r.day < T || r.day > end || !rc.has(r.store + '#' + r.course)) continue;
-    if (!inArea(r.store, state.area) || (state.store && r.store !== state.store) || (state.staff && r.staff !== state.staff)) continue;
-    if (!by.has(r.staff)) by.set(r.staff, new Map());
-    const m = by.get(r.staff); if (!m.has(r.cust)) m.set(r.cust, { cust: r.cust, store: r.store, days: [] }); m.get(r.cust).days.push(r.day);
-  }
-  const staffs = [...by.keys()].sort((a, b) => by.get(b).size - by.get(a).size), total = staffs.reduce((a, s) => a + by.get(s).size, 0);
-  let h = `<div class="card" style="margin-bottom:20px"><h2>更新の予約が入っている人（今日〜${md(end)}）</h2>
-    <p>予約表で紫になる「回数券更新」のコースで予約が入っている人です。同じ人に2つ入っていても1人と数えます。</p>`;
-  if (!hasCourse) return h + '<p class="warnline">予約データにコース番号がまだ入っていません。CSVを入れるタブで予約データを入れ直すと出ます。</p></div>';
-  if (!total) return h + '<div class="empty">今月の残りに、更新の予約が入っている人はいません。</div></div>';
-  const multi = new Set([...by.values()].flatMap(m => [...m.values()].map(x => x.store))).size > 1;
-  h += `<p class="kv">合計 <b>${total}人</b></p><div class="anawrap"><table class="ana rb"><tr><th>担当</th><th class="r">人数</th><th>患者さん（予約日）</th></tr>${staffs.map(s => { const xs = [...by.get(s).values()].sort((a, b) => Math.min(...a.days) - Math.min(...b.days));
-    return `<tr><td>${esc(s)}</td><td class="r"><b>${xs.length}</b></td><td>${xs.map(x => { const c = data.cust.get(x.cust); return `<span class="rbk">${esc((c && c.name) || 'ID ' + x.cust)}<small>${x.days.sort((a, b) => a - b).map(md).join('・')}${multi ? '・' + esc(shortStore(x.store)) : ''}</small></span>`; }).join('')}</td></tr>`; }).join('')}</table></div></div>`;
-  return h;
-}
 function viewRenew() {
   const sc = scoped().filter(p => p.isTicket);
   const act = sc.filter(p => p.status !== 'ended' && p.status !== 'away'), known = act.filter(p => p.endDay !== null);
@@ -1687,7 +1657,6 @@ function viewRenew() {
     <p>今のペースで通った場合に最後の1回が来る月です（過去3か月は、実際に終わった月）。「見込み」は全員が同じ回数券で更新した場合に更新率をかけた金額、「提案予定」はスタッフが選んだ回数券の合計、「実績」は更新の回数券をその月に買った人の入金の合計です（CSVで分かった分。分割払いは、それまでの入金の合計）。</p>
     <div class="ratebar"><label>更新率 <input type="number" inputmode="numeric" min="0" max="100" value="${rate}" data-set="renewRate" aria-label="更新率"${canEditSet() ? '' : ' disabled'}> %</label>
       ${rp.length ? `<span>参考：これまでの更新率 <b>${Math.round(yes / rp.length * 100)}%</b>（更新のタイミングを迎えた${rp.length}人のうち${yes}人が更新）</span>` : ''}</div>`;
-  top = renewBookings() + top;
   if (!keys.length) top += '<div class="empty">対象の患者さんがまだいません。</div>';
   else {
     const planOf = rs => rs.filter(r => r.plan.t && r.plan.t !== 'tbd' && r.plan.t !== 'none').reduce((a, r) => a + (priceOf(r.plan.t) || 0), 0);

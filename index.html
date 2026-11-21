@@ -720,7 +720,7 @@ if (typeof module !== 'undefined') module.exports = { toDay, dayISO, parseCSV, d
 </script>
 <script>
 /* ===== 画面 ===== */
-const APP_VER = '11/14-3';
+const APP_VER = '11/21-1';
 const fbReady = new Promise(r => { window.fbReady = r; });
 const WD = ['日', '月', '火', '水', '木', '金', '土'];
 const md = n => { const d = dayToDate(n); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
@@ -1100,7 +1100,7 @@ function renderMe() {
   b.hidden = !m;
   if (m) b.innerHTML = `<span>${esc(m.name && m.name !== ROLE[m.role] ? m.name : m.email)}<small>${roleLabel(m)}</small></span><button class="btn ghost sm" data-act="chpw">パスワード変更</button><button class="btn ghost sm" data-act="logout">ログアウト</button>`;
   const t = $('#tabMem'); if (t) t.hidden = !canUpload();
-  const ta = $('#tabAna'); if (ta) ta.hidden = !isAdmin();
+  const ta = $('#tabAna'); if (ta) ta.hidden = !canAna();
 }
 async function boot() {
   gate('loading');
@@ -1983,9 +1983,10 @@ function custAttr(g) {
   const cp = g('流入元キャンペーン').toLowerCase().replace(/\d+$/, '');
   return [g('性別'), age, ch, cp ? (CAMP[cp] || cp) : '', first.replace(/\|/g, '/').slice(0, 40)].join('|');
 }
+const canAna = () => isAdmin() || isAM(); // 分析：管理者とエリマネ（担当の院だけ）
 const anaAttr = cid => { for (const s of Object.keys(state.ana || {})) { const v = state.ana[s][cid]; if (v) return v.split('|'); } return null; };
 async function loadAna() {
-  if (state.anaLoading || !isAdmin()) return;
+  if (state.anaLoading || !canAna()) return;
   state.anaLoading = true; const out = {};
   await Promise.all(Object.keys(storeData).map(s => FB.get('ana/' + s).then(x => { if (x && x.c) out[s] = x.c; }, () => {})));
   state.ana = out; state.anaLoaded = true; state.anaLoading = false;
@@ -2041,7 +2042,7 @@ function groupRows(ns, keyOf, order) {
 }
 const ANA_SECS = [['new', '新規'], ['ticket', '回数券'], ['src', '集客'], ['who', 'お客さんの層'], ['wd', '曜日']];
 function viewAna() {
-  if (!isAdmin()) return '<p class="guide">この画面は管理者だけが見られます。</p>';
+  if (!canAna()) return '<p class="guide">この画面は管理者とエリマネだけが見られます。</p>';
   if (!state.anaLoaded) loadAna();
   const B = anaBase(), per = state.anaPer || '3', sec = state.anaSec || 'new', T = B.T;
   const td0 = dayToDate(T), fromDay = per === 'all' ? -Infinity : Math.round(Date.UTC(td0.getUTCFullYear(), td0.getUTCMonth() - (Number(per) - 1), 1) / DAY_MS);
@@ -2051,7 +2052,7 @@ function viewAna() {
   const scope = state.store ? shortStore(state.store) : state.area || (fcSplit() ? '全エリア（直営）' : '全エリア');
   const nb = NS.filter(n => n.bought).length, ns = NS.reduce((a, n) => a + n.sales, 0), bs = buys.reduce((a, b) => a + b.price, 0);
   const chips = (list, cur, key) => list.map(([k, l]) => `<button class="chip" data-${key}="${k}" aria-pressed="${cur === k}">${l}</button>`).join('');
-  let h = `<p class="guide">管理者だけに見える画面です。${esc(scope)}${state.staff ? '・' + esc(state.staff) : ''}／${per === 'all' ? '入っているデータ全部' : md(fromDay) + '〜' + md(T)}</p>
+  let h = `<p class="guide">管理者とエリマネだけに見える画面です。${esc(scope)}${state.staff ? '・' + esc(state.staff) : ''}／${per === 'all' ? '入っているデータ全部' : md(fromDay) + '〜' + md(T)}</p>
   <div class="anactl"><div class="chips">${chips([['1', '今月'], ['3', '3か月'], ['6', '6か月'], ['all', '全期間']], per, 'anaper')}</div><div class="chips">${chips(ANA_SECS, sec, 'anasec')}</div></div>
   <div class="kpis">
     <div class="kpi"><small>新規数</small><b>${NS.length}</b><span>人</span></div>
